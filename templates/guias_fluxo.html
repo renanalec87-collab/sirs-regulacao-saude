@@ -1,0 +1,189 @@
+{% set perfil = session.get('perfil') %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manuais e Orientações de Encaminhamento — CAPS II</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; }
+        
+        .topbar { background-color: #692A85; color: white; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .topbar .title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
+        .topbar .center-title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .topbar .user-info { font-size: 13px; display: flex; align-items: center; gap: 12px; }
+        .topbar .user-info span { background: rgba(255,255,255,0.15); padding: 4px 10px; border-radius: 12px; font-weight: 500; }
+        .btn-logout { background-color: #dc2626; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; transition: background 0.2s; }
+        .btn-logout:hover { background-color: #b91c1c; }
+
+        .navbar-custom { background: white; border-bottom: 1px solid #e5e7eb; padding: 0 24px; display: flex; gap: 20px; overflow-x: auto; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .navbar-custom a { text-decoration: none; color: #4b5563; font-size: 14px; font-weight: 600; padding: 14px 0; border-bottom: 3px solid transparent; transition: all 0.2s; display: inline-block; flex-shrink: 0; }
+        .navbar-custom a:hover, .navbar-custom a.active { color: #692A85; border-bottom-color: #692A85; }
+
+        .container-custom { flex: 1; padding: 24px; max-width: 1200px; margin: 0 auto; width: 100%; }
+        
+        /* Card mais compacto, estreito e elegante */
+        .card-guia { 
+            background: white; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06); 
+            padding: 14px 16px; 
+            border-top: 4px solid #692A85; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: space-between; 
+            height: 100%;
+            max-width: 380px; 
+            margin: 0 auto;
+        }
+
+        .footer { text-align: center; padding: 14px 0; font-size: 12px; color: #6b7280; background-color: #e5e7eb; margin-top: auto; border-top: 1px solid #d1d5db; }
+    </style>
+</head>
+<body>
+
+    <div class="topbar">
+        <div class="title">{{ session.get('estabelecimento', 'CAPS II — São Roque') }}</div>
+        <div class="center-title">Gestão de Especialidades</div>
+        <div class="user-info">
+            Olá, <strong>{{ session.nome }}</strong>
+            {% if perfil %}
+                <span>{{ perfil }}</span>
+            {% endif %}
+            <a href="/logout" class="btn-logout">Sair</a>
+        </div>
+    </div>
+
+    <div class="navbar-custom">
+        <a href="/dashboard">Consulta / Início</a>
+        <a href="/lista-espera">Lista de Espera & Regulação</a>
+        <a href="/guias-fluxo" class="active">Guias & Fluxos de Encaminhamento</a>
+        {% if perfil == 'NIVEL_I' %}
+            <a href="/admin/profissionais">Profissionais</a>
+            <a href="/admin/estabelecimentos">Unidades de Saúde</a>
+            <a href="/relatorios">Relatórios</a>
+            <a href="/admin/configuracoes">Configurações</a>
+        {% endif %}
+    </div>
+
+    <div class="container-custom">
+        
+        <div class="mb-4">
+            <h4 class="fw-bold text-dark mb-1">Manuais e Orientações de Encaminhamento</h4>
+            <p class="text-muted small mb-0">Consulte os requisitos técnicos, critérios de elegibilidade e documentação necessária para regulação na rede.</p>
+        </div>
+
+        <!-- Barra de Pesquisa Rápida -->
+        <div class="card p-3 mb-4 shadow-sm border-0">
+            <div class="input-group">
+                <input type="text" id="inputBusca" class="form-control" placeholder="Pesquisar por título, categoria ou descrição..." onkeyup="filtrarGuias()">
+                <button class="btn btn-outline-secondary" type="button" onclick="limparBusca()">Limpar</button>
+            </div>
+        </div>
+
+        <!-- Grid de Cards de Guias -->
+        <div class="row row-cols-1 row-cols-md-3 g-4" id="gridGuias">
+            {% if guias %}
+                {% for guia in guias %}
+                <div class="col item-guia" data-texto="{{ guia.titulo|lower }} {{ guia.categoria|lower }} {{ guia.descricao_resumida|lower }}">
+                    <div class="card-guia">
+                        <div>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="pe-2">
+                                    <span class="badge bg-light text-purple border mb-1" style="color: #692A85; font-weight: 600; font-size: 10px;">{{ guia.categoria | upper }}</span>
+                                    <h5 class="fw-bold text-dark mb-0" style="font-size: 15px;"><i class="fas fa-thumbtack text-danger me-1" style="font-size: 11px;"></i> {{ guia.titulo }}</h5>
+                                </div>
+                                <!-- Círculo da Logo bem maior (110px) e perfeitamente circular -->
+                                <div class="rounded-circle overflow-hidden border d-flex align-items-center justify-content-center shadow-sm flex-shrink-0 bg-white" style="width: 110px; height: 110px;">
+                                    {% if guia.logo_path %}
+                                        <img src="{{ url_for('static', filename=guia.logo_path) }}" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;">
+                                    {% else %}
+                                        <i class="fas fa-hospital text-muted fa-2x"></i>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <p class="text-muted small mb-2 text-truncate-2" style="font-size: 12px; line-height: 1.3;">{{ guia.descricao_resumida }}</p>
+                        </div>
+
+                        <div>
+                            <!-- Botão Ver Diretrizes -->
+                            <button class="btn btn-outline-dark btn-sm w-100 py-1 fw-semibold" style="font-size: 12px;" data-bs-toggle="modal" data-bs-target="#modalGuia{{ guia.id }}">
+                                <i class="fas fa-book-open me-1"></i> Ver Diretrizes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal de Detalhes de Cada Guia -->
+                <div class="modal fade" id="modalGuia{{ guia.id }}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header bg-light">
+                                <h5 class="modal-title fw-bold text-dark">{{ guia.titulo }}</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p class="text-muted small mb-3"><strong>Categoria:</strong> {{ guia.categoria }}</p>
+                                <hr>
+                                <div class="conteudo-tecnico mb-4">
+                                    {{ guia.conteudo_orientacao | safe }}
+                                </div>
+
+                                <!-- Anexos PDF dentro do Modal -->
+                                {% if guia.anexos %}
+                                    <div class="card bg-light border-0 p-3 mt-3">
+                                        <h6 class="fw-bold text-dark mb-2"><i class="fas fa-file-pdf text-danger me-1"></i> Formulários e Documentos Disponíveis para Download:</h6>
+                                        <div class="d-flex flex-column gap-2">
+                                            {% for anexo in guia.anexos %}
+                                                <a href="{{ url_for('static', filename=anexo.pdf_path) }}" target="_blank" class="btn btn-sm btn-outline-danger text-start d-flex justify-content-between align-items-center py-2 px-3 bg-white">
+                                                    <span><i class="fas fa-file-pdf me-2 text-danger"></i> {{ anexo.nome_arquivo }}</span>
+                                                    <span><i class="fas fa-download ms-1"></i> Baixar</span>
+                                                </a>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="modal-footer bg-light">
+                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fechar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="col-12 text-center text-muted py-5">
+                    <p>Nenhum guia ou manual ativo disponível no momento.</p>
+                </div>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <div class="footer">Intranet CAPS II — São Roque &copy; 2026.</div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function filtrarGuias() {
+            let termo = document.getElementById('inputBusca').value.toLowerCase();
+            let cards = document.getElementsByClassName('item-guia');
+            for (let i = 0; i < cards.length; i++) {
+                let texto = cards[i].getAttribute('data-texto');
+                if (texto.includes(termo)) {
+                    cards[i].style.display = "";
+                } else {
+                    cards[i].style.display = "none";
+                }
+            }
+        }
+
+        function limparBusca() {
+            document.getElementById('inputBusca').value = '';
+            filtrarGuias();
+        }
+    </script>
+</body>
+</html>

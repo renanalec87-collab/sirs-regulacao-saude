@@ -1,0 +1,365 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intranet CAPS II - Login</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; justify-content: space-between; }
+        
+        .header-container { width: 100%; }
+        .header { 
+            width: 100%; 
+            background-color: #692A85; 
+            color: white; 
+            text-align: center; 
+            padding: 20px 20px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        .header h1 { font-size: 19px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .header p { font-size: 13.5px; opacity: 0.9; margin-top: 3px; }
+
+        .main-wrapper { 
+            flex: 1; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            gap: 35px; 
+            padding: 30px 20px; 
+            width: 100%;
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+        
+        .login-card { 
+            background: white; 
+            padding: 35px 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08); 
+            width: 380px; 
+            min-height: 460px;
+            flex-shrink: 0;
+            border-top: 5px solid #692A85; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+        }
+        
+        .logo-saude-card {
+            height: 48px;
+            width: auto;
+            object-fit: contain;
+            margin-bottom: 20px;
+        }
+
+        .login-card h2 { color: #374151; font-size: 21px; margin-bottom: 20px; text-align: center; font-weight: 700; width: 100%; }
+        
+        .form-group { margin-bottom: 16px; width: 100%; }
+        .form-group label { display: block; font-size: 13.5px; color: #4b5563; margin-bottom: 6px; font-weight: 600; }
+        .form-group input { width: 100%; padding: 11px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14.5px; outline: none; transition: border-color 0.2s; }
+        .form-group input:focus { border-color: #692A85; box-shadow: 0 0 0 3px rgba(105, 42, 133, 0.1); }
+        
+        .btn-submit { width: 100%; padding: 12px; background-color: #692A85; color: white; border: none; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: 4px; }
+        .btn-submit:hover { background-color: #521d6b; }
+        
+        .right-panel {
+            flex: 1;
+            max-width: 750px;
+            min-height: 460px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #carouselBanners {
+            width: 100%;
+        }
+
+        .banner-slide {
+            display: none;
+            width: 100%;
+        }
+
+        .banner-slide.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+
+        .banner-card { 
+            background: white; 
+            padding: 28px 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08); 
+            width: 100%; 
+            min-height: 460px;
+            text-align: center; 
+            border-top: 5px solid #692A85; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .banner-card h3 { 
+            color: #692A85; 
+            font-size: 19px; 
+            margin-bottom: 12px; 
+            font-weight: 700; 
+        }
+
+        .banner-content-body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 25px;
+            width: 100%;
+            margin: auto 0;
+        }
+
+        .banner-content-body.has-text {
+            justify-content: space-between;
+        }
+
+        .banner-card img.banner-img { 
+            max-height: 270px; 
+            max-width: 100%;
+            object-fit: contain;
+            border-radius: 6px; 
+        }
+
+        .banner-text-box {
+            flex: 1;
+            text-align: left;
+            font-size: 14px;
+            color: #374151;
+            line-height: 1.55;
+            background-color: #fdf8ff;
+            border-left: 4px solid #692A85;
+            padding: 15px;
+            border-radius: 6px;
+            max-height: 270px;
+            overflow-y: auto;
+        }
+        
+        .logo-below-banner {
+            height: 40px;
+            width: auto;
+            object-fit: contain;
+            margin-top: 12px;
+        }
+
+        .slide-indicators {
+            display: flex;
+            gap: 8px;
+            margin-top: 14px;
+        }
+        .indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #cbd5e1;
+            transition: background-color 0.3s;
+            cursor: pointer;
+        }
+        .indicator.active {
+            background-color: #692A85;
+        }
+
+        .alert { padding: 10px; border-radius: 6px; font-size: 13.5px; margin-bottom: 15px; text-align: center; width: 100%; }
+        .alert-danger { background-color: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        .alert-success { background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .alert-warning { background-color: #fffbeb; color: #92400e; border: 1px solid #fef3c7; }
+        .alert-info { background-color: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+        
+        .footer { width: 100%; text-align: center; padding: 14px 0; font-size: 13px; color: #6b7280; background-color: #e5e7eb; }
+    </style>
+</head>
+<body>
+
+    <div class="header-container">
+        <div class="header">
+            <h1>PREFEITURA MUNICIPAL DA ESTÂNCIA TURÍSTICA DE SÃO ROQUE</h1>
+            <p>Departamento de Saúde | CAPS II - Centro de Atenção Psicossocial</p>
+        </div>
+    </div>
+
+    <div class="main-wrapper">
+        <div class="login-card">
+            <img src="{{ url_for('static', filename='logos/logo_saude.png') }}" alt="Logo Saúde" class="logo-saude-card">
+            <h2>Acesso ao Sistema</h2>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+              {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="/login" style="width: 100%;">
+                <div class="form-group">
+                    <label for="login">CPF ou E-mail</label>
+                    <input type="text" id="login" name="login" placeholder="Digite seu CPF ou E-mail" required autofocus autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="senha">Senha</label>
+                    <input type="password" id="senha" name="senha" placeholder="Digite sua senha" minlength="3" maxlength="8" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn-submit">Entrar</button>
+            </form>
+
+            <div style="text-align: right; width: 100%; margin-top: 14px;">
+                <a href="#" onclick="abrirModalEsqueceu(event)" style="font-size: 13px; color: #692A85; text-decoration: none; font-weight: 600;">Esqueceu sua senha?</a>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            {% if campanhas and campanhas|length > 0 %}
+                <div id="carouselBanners">
+                    {% for campanha in campanhas %}
+                    <div class="banner-slide {% if loop.first %}active{% endif %}">
+                        <div class="banner-card">
+                            <h3>{{ campanha.titulo }}</h3>
+                            
+                            <div class="banner-content-body {% if campanha.descricao_texto %}has-text{% endif %}">
+                                {% if campanha.arquivo_path %}
+                                    <img src="{{ url_for('static', filename=campanha.arquivo_path.replace('static/', '')) }}" alt="{{ campanha.titulo }}" class="banner-img">
+                                {% endif %}
+                                
+                                {% if campanha.descricao_texto %}
+                                    <div class="banner-text-box">
+                                        {{ campanha.descricao_texto | safe }}
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <img src="{{ url_for('static', filename='logos/logo_saoroque.png') }}" alt="Logo São Roque" class="logo-below-banner">
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% if campanhas|length > 1 %}
+                <div class="slide-indicators">
+                    {% for campanha in campanhas %}
+                    <div class="indicator {% if loop.first %}active{% endif %}" data-slide="{{ loop.index0 }}"></div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Modal 1: Solicitar Recuperação -->
+    <div id="modalEsqueceu" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center;">
+        <div style="background: white; width: 100%; max-width: 420px; border-radius: 8px; padding: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+            <h3 style="color: #692A85; margin-bottom: 12px; font-size: 17px;">Recuperação de Senha</h3>
+            <p style="font-size: 13px; color: #4b5563; margin-bottom: 16px;">Informe seu CPF ou E-mail cadastrado. Enviaremos um código de 6 dígitos para o seu e-mail.</p>
+            
+            <form id="formRecuperacao" method="POST" action="/recuperar-senha-solicitar">
+                <div class="form-group">
+                    <label for="rec_login">CPF ou E-mail</label>
+                    <input type="text" id="rec_login" name="login" placeholder="Digite seu CPF ou E-mail" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; margin-bottom: 15px;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" onclick="fecharModalEsqueceu()" style="background: #e5e7eb; color: #374151; border: none; padding: 9px 14px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13.5px;">Cancelar</button>
+                    <button type="submit" style="background: #692A85; color: white; border: none; padding: 9px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13.5px;">Enviar Código</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 2: Validar Token e Redefinir Senha (Caso haja ID de recuperação pendente) -->
+    {% if pid_pendente %}
+    <div id="modalValidarToken" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2500; justify-content: center; align-items: center;">
+        <div style="background: white; width: 100%; max-width: 420px; border-radius: 8px; padding: 25px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);">
+            <h3 style="color: #692A85; margin-bottom: 12px; font-size: 17px;">Redefinição de Senha</h3>
+            <p style="font-size: 13px; color: #4b5563; margin-bottom: 16px;">Digite o código de 6 dígitos enviado e cadastre sua nova senha.</p>
+            
+            <form method="POST" action="/recuperar-senha/validar/{{ pid_pendente }}">
+                <div class="form-group">
+                    <label for="token">Código de 6 Dígitos</label>
+                    <input type="text" id="token" name="token" placeholder="Digite o código numérico" maxlength="6" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; margin-bottom: 12px;">
+                </div>
+                <div class="form-group">
+                    <label for="nova_senha">Nova Senha (8 caracteres, mín. 3 letras)</label>
+                    <input type="password" id="nova_senha" name="nova_senha" placeholder="Digite a nova senha" minlength="8" maxlength="8" required style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; margin-bottom: 15px;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <a href="/login" style="background: #e5e7eb; color: #374151; text-decoration: none; padding: 9px 14px; border-radius: 6px; font-weight: 600; font-size: 13.5px; display:inline-block; text-align:center;">Cancelar</a>
+                    <button type="submit" style="background: #692A85; color: white; border: none; padding: 9px 18px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13.5px;">Atualizar Senha</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="footer">
+        Intranet CAPS II — São Roque &copy; 2026. Todos os direitos reservados.
+    </div>
+
+    <script>
+        document.getElementById('login').addEventListener('input', function (e) {
+            let val = e.target.value;
+            if (/[a-zA-Z@]/.test(val)) { return; }
+            let nums = val.replace(/\D/g, '');
+            if (nums.length <= 11) {
+                if (nums.length > 9) {
+                    nums = nums.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+                } else if (nums.length > 6) {
+                    nums = nums.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+                } else if (nums.length > 3) {
+                    nums = nums.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+                }
+                e.target.value = nums;
+            } else {
+                e.target.value = e.target.value.substring(0, 14);
+            }
+        });
+
+        function abrirModalEsqueceu(e) {
+            e.preventDefault();
+            document.getElementById('modalEsqueceu').style.display = 'flex';
+        }
+        function fecharModalEsqueceu() {
+            document.getElementById('modalEsqueceu').style.display = 'none';
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            const slides = document.querySelectorAll('.banner-slide');
+            const indicators = document.querySelectorAll('.indicator');
+            let currentSlide = 0;
+            let slideInterval;
+
+            function showSlide(index) {
+                slides.forEach((slide, i) => {
+                    slide.classList.remove('active');
+                    if (indicators[i]) indicators[i].classList.remove('active');
+                });
+                slides[index].classList.add('active');
+                if (indicators[index]) indicators[index].classList.add('active');
+                currentSlide = index;
+            }
+
+            if (slides.length > 1) {
+                slideInterval = setInterval(function() {
+                    let next = (currentSlide + 1) % slides.length;
+                    showSlide(next);
+                }, 5000); 
+
+                indicators.forEach((indicator, index) => {
+                    indicator.addEventListener('click', function() {
+                        clearInterval(slideInterval);
+                        showSlide(index);
+                    });
+                });
+            }
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,305 @@
+{% set perfil = session.get('perfil') %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intranet CAPS II - Gerenciamento de Unidades de Saúde</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; }
+        
+        .topbar { background-color: #692A85; color: white; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .topbar .title { font-size: 16px; font-weight: 600; text-transform: uppercase; }
+        .topbar .user-info { font-size: 13px; display: flex; align-items: center; gap: 15px; }
+        .topbar .user-info span { background: rgba(255,255,255,0.15); padding: 4px 10px; border-radius: 12px; font-weight: 500; }
+        .btn-logout { background-color: #dc2626; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; transition: background 0.2s; }
+        .btn-logout:hover { background-color: #b91c1c; }
+
+        .navbar { background: white; border-bottom: 1px solid #e5e7eb; padding: 0 24px; display: flex; flex-direction: row; gap: 20px; width: 100%; overflow-x: auto; white-space: nowrap; }
+        .navbar a { text-decoration: none; color: #4b5563; font-size: 14px; font-weight: 600; padding: 14px 0; border-bottom: 3px solid transparent; transition: all 0.2s; display: inline-block; flex-shrink: 0; }
+        .navbar a:hover, .navbar a.active { color: #692A85; border-bottom-color: #692A85; }
+
+        .container { flex: 1; padding: 24px; max-width: 1200px; margin: 0 auto; width: 100%; display: block; }
+
+        .page-header { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 24px; border-top: 4px solid #692A85; display: flex; justify-content: space-between; align-items: center; }
+        .page-header h2 { font-size: 18px; color: #1f2937; margin-bottom: 4px; }
+        .page-header p { font-size: 13px; color: #6b7280; }
+
+        .search-card { background: white; padding: 20px 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 24px; display: flex; gap: 12px; align-items: center; }
+        .search-input { flex: 1; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; }
+        .search-input:focus { border-color: #692A85; box-shadow: 0 0 0 3px rgba(105, 42, 133, 0.1); }
+
+        .btn-search { background-color: #692A85; color: white; border: none; padding: 12px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
+        .btn-search:hover { background-color: #521d6b; }
+        .btn-clear { background-color: #4b5563; color: white; border: none; padding: 12px 18px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
+        .btn-clear:hover { background-color: #374151; }
+
+        .btn-novo { background-color: #059669; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; text-decoration: none; display: inline-block; white-space: nowrap; }
+        .btn-novo:hover { background-color: #047857; }
+
+        .alert { padding: 12px 16px; border-radius: 6px; font-size: 14px; margin-bottom: 20px; }
+        .alert-success { background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .alert-danger { background-color: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+        .data-panel { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); width: 100%; overflow-x: auto; }
+        .table-data { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px; }
+        .table-data th { padding: 12px; border-bottom: 2px solid #e5e7eb; color: #4b5563; font-weight: 600; }
+        .table-data td { padding: 12px; border-bottom: 1px solid #f3f4f6; color: #1f2937; }
+        .table-data tr:hover { background-color: #f9fafb; }
+
+        .badge-tipo { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block; background: #e0f2fe; color: #075985; }
+
+        .btn-edit { background-color: #2563eb; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s; text-decoration: none; display: inline-block; }
+        .btn-edit:hover { background-color: #1d4ed8; }
+
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; width: 100%; max-width: 600px; border-radius: 8px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 20px; }
+        .modal-header h3 { font-size: 18px; color: #111827; }
+        .btn-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #6b7280; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-group-full { grid-column: span 2; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; }
+        .form-group input:focus, .form-group select:focus { border-color: #692A85; box-shadow: 0 0 0 3px rgba(105, 42, 133, 0.1); }
+
+        .modal-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 16px; }
+        .btn-cancel { background: #e5e7eb; color: #374151; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .btn-save { background: #692A85; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .btn-save:hover { background: #521d6b; }
+
+        .footer { text-align: center; padding: 14px 0; font-size: 12px; color: #6b7280; background-color: #e5e7eb; margin-top: auto; }
+    </style>
+</head>
+<body>
+
+    <div class="topbar">
+        <div class="title">{{ session.get('estabelecimento', 'CAPS II — São Roque') }}</div>
+        <div style="font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Gestão de Especialidades</div>
+        <div class="user-info">
+            Olá, <strong>{{ session.nome }}</strong>
+            <span>{{ perfil }}</span>
+            <a href="/logout" class="btn-logout">Sair</a>
+        </div>
+    </div>
+
+    <!-- Barra de Navegação Horizontal Padronizada -->
+    <div class="navbar">
+        <a href="/dashboard">Consulta / Início</a>
+        <a href="/lista-espera">Lista de Espera & Regulação</a>
+        <a href="/guias-fluxo">Guias & Fluxos de Encaminhamento</a>
+        
+        {% if session.get('perfil') == 'NIVEL_I' or session.perfil == 'NIVEL_I' %}
+            <a href="/admin/profissionais">Profissionais</a>
+            <a href="/admin/estabelecimentos" class="active">Unidades de Saúde</a>
+            <a href="/relatorios">Relatórios</a>
+            <a href="/admin/configuracoes">Configurações</a>
+        {% endif %}
+    </div>
+
+    <div class="container">
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <div class="page-header">
+            <div>
+                <h2>Gerenciamento de Unidades de Saúde</h2>
+                <p>Cadastre e gerencie os estabelecimentos da rede (UBS, CAPS, USF, Hospitais).</p>
+            </div>
+            <button type="button" class="btn-novo" onclick="abrirModalNovo()">+ Nova Unidade</button>
+        </div>
+
+        <!-- Barra de Pesquisa Rápida -->
+        <div class="search-card">
+            <input type="text" id="filtroEstabelecimento" class="search-input" placeholder="Pesquisar por Nome ou CNES da unidade..." onkeypress="handleKeyPress(event)" autofocus>
+            <button type="button" class="btn-search" onclick="filtrarTabelaEstabelecimentos()">Pesquisar</button>
+            <button type="button" class="btn-clear" onclick="limparBuscaEstabelecimento()">Limpar</button>
+        </div>
+
+        <div class="data-panel">
+            <table class="table-data" id="tabelaEstabelecimentos">
+                <thead>
+                    <tr>
+                        <th>Nome da Unidade</th>
+                        <th>CNES</th>
+                        <th>Tipo / Categoria</th>
+                        <th style="text-align: center;">Status</th>
+                        <th style="text-align: right;">Ação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for est in estabelecimentos %}
+                    <tr>
+                        <td><strong>{{ est.nome }}</strong></td>
+                        <td>{{ est.cnes or 'Não informado' }}</td>
+                        <td><span class="badge-tipo">{{ est.tipo }}</span></td>
+                        <td style="text-align: center;">
+                            {% if est.ativo is defined and not est.ativo %}
+                                <span title="Inativo" style="font-size: 16px; cursor: help;">🔴</span>
+                            {% else %}
+                                <span title="Ativo" style="font-size: 16px; cursor: help;">🟢</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            <button class="btn-edit" onclick='abrirModalEdicao({{ est | tojson }})'>Editar</button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: #6b7280; padding: 20px;">Nenhuma unidade cadastrada.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- MODAL CADASTRO / EDIÇÃO -->
+    <div id="modalEstabelecimento" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitulo">Cadastrar Nova Unidade</h3>
+                <button type="button" class="btn-close" onclick="fecharModal()">&times;</button>
+            </div>
+            <form action="{{ url_for('salvar_estabelecimento') }}" method="POST">
+                <input type="hidden" name="id" id="estab_id">
+                
+                <div class="form-grid">
+                    <div class="form-group form-group-full">
+                        <label>Nome da Unidade *</label>
+                        <input type="text" name="nome" id="estab_nome" placeholder="Ex: UBS Central" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>CNES</label>
+                        <input type="text" name="cnes" id="estab_cnes" placeholder="Ex: 1234567">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Tipo / Categoria *</label>
+                        <select name="tipo" id="estab_tipo" required>
+                            <option value="UBS">UBS (Unidade Básica de Saúde)</option>
+                            <option value="CAPS">CAPS (Centro de Atenção Psicossocial)</option>
+                            <option value="USF">USF (Unidade de Saúde da Família)</option>
+                            <option value="Centro de Especialidades">Centro de Especialidades</option>
+                            <option value="Hospital">Hospital / Pronto Socorro</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group form-group-full">
+                        <label>Status da Unidade *</label>
+                        <select name="ativo" id="estab_ativo" required>
+                            <option value="1">Ativa (Disponível no Sistema)</option>
+                            <option value="0">Inativa (Suspensa)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Bloco de Auditoria (Exibido apenas na edição) -->
+                <div id="blocoAuditoriaEstab" style="display: none; font-size: 12px; color: #4b5563; background: #f9fafb; padding: 10px; border-radius: 6px; border: 1px solid #e5e7eb; margin-top: 10px;">
+                    <div><strong>Cadastrado por:</strong> <span id="auditCriadoPor">-</span> em <span id="auditCriadoEm">-</span></div>
+                    <div style="margin-top: 4px;"><strong>Última atualização por:</strong> <span id="auditAtualizadoPor">-</span> em <span id="auditAtualizadoEm">-</span></div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+                    <button type="submit" class="btn-save">Salvar Unidade</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="footer">Intranet CAPS II — São Roque © 2026.</div>
+
+    <script>
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') {
+                filtrarTabelaEstabelecimentos();
+            }
+        }
+
+        function filtrarTabelaEstabelecimentos() {
+            let input = document.getElementById('filtroEstabelecimento').value.toLowerCase().trim();
+            let table = document.getElementById('tabelaEstabelecimentos');
+            let tr = table.getElementsByTagName('tr');
+
+            for (let i = 1; i < tr.length; i++) {
+                let tdNome = tr[i].getElementsByTagName('td')[0];
+                let tdCnes = tr[i].getElementsByTagName('td')[1];
+                if (tdNome && tdCnes) {
+                    let txtNome = tdNome.textContent || tdNome.innerText;
+                    let txtCnes = tdCnes.textContent || tdCnes.innerText;
+                    if (input === "" || txtNome.toLowerCase().indexOf(input) > -1 || txtCnes.toLowerCase().indexOf(input) > -1) {
+                        tr[i].style.display = "";
+                    } else {
+                        tr[i].style.display = "none";
+                    }
+                }
+            }
+        }
+
+        function limparBuscaEstabelecimento() {
+            document.getElementById('filtroEstabelecimento').value = '';
+            filtrarTabelaEstabelecimentos();
+        }
+
+        function abrirModalNovo() {
+            document.getElementById('modalTitulo').innerText = 'Cadastrar Nova Unidade';
+            document.getElementById('estab_id').value = '';
+            document.getElementById('estab_nome').value = '';
+            document.getElementById('estab_cnes').value = '';
+            document.getElementById('estab_tipo').value = 'UBS';
+            document.getElementById('estab_ativo').value = '1';
+            document.getElementById('blocoAuditoriaEstab').style.display = 'none';
+            document.getElementById('modalEstabelecimento').style.display = 'flex';
+        }
+
+        function abrirModalEdicao(est) {
+            document.getElementById('modalTitulo').innerText = 'Editar Unidade de Saúde';
+            document.getElementById('estab_id').value = est.id;
+            document.getElementById('estab_nome').value = est.nome;
+            document.getElementById('estab_cnes').value = est.cnes || '';
+            document.getElementById('estab_tipo').value = est.tipo || 'UBS';
+            
+            const statusAtivo = (est.ativo === true || est.ativo === 1 || est.ativo === "1") ? '1' : '0';
+            document.getElementById('estab_ativo').value = statusAtivo;
+
+            // Preenchimento robusto dos dados de auditoria
+            const blocoAudit = document.getElementById('blocoAuditoriaEstab');
+            const criadoPor = est.criado_por_nome || est.criador_nome || 'Sistema';
+            const criadoEm = est.created_at || est.data_criacao || '-';
+            const atualizadoPor = est.atualizado_por_nome || est.atualizador_nome || est.ultima_atualizacao_por || null;
+            const atualizadoEm = est.updated_at || est.data_atualizacao || null;
+
+            document.getElementById('auditCriadoPor').innerText = criadoPor;
+            document.getElementById('auditCriadoEm').innerText = criadoEm;
+
+            if (atualizadoPor && atualizadoPor !== 'None' && atualizadoPor !== 'null' && atualizadoPor !== '') {
+                document.getElementById('auditAtualizadoPor').innerText = atualizadoPor;
+                document.getElementById('auditAtualizadoEm').innerText = atualizadoEm || '-';
+            } else {
+                document.getElementById('auditAtualizadoPor').innerText = 'Nenhum registro';
+                document.getElementById('auditAtualizadoEm').innerText = '-';
+            }
+
+            blocoAudit.style.display = 'block';
+            document.getElementById('modalEstabelecimento').style.display = 'flex';
+        }
+
+        function fecharModal() {
+            document.getElementById('modalEstabelecimento').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,618 @@
+{% set perfil = session.get('perfil') %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intranet CAPS II - Relatórios Executivos & Indicadores</title>
+    <!-- Biblioteca Leaflet CSS para o Mapa Interativo -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Chart.js para o Gráfico Executivo -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; color: #1f2937; }
+        
+        .topbar { background-color: #692A85; color: white; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .topbar .title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
+        .topbar .center-title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .topbar .user-info { font-size: 13px; display: flex; align-items: center; gap: 12px; }
+        .topbar .user-info span { background: rgba(255,255,255,0.15); padding: 4px 10px; border-radius: 12px; font-weight: 500; }
+        .btn-logout { background-color: #dc2626; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; transition: background 0.2s; }
+        .btn-logout:hover { background-color: #b91c1c; }
+
+        .navbar { background: white; border-bottom: 1px solid #e5e7eb; padding: 0 24px; display: flex; gap: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.02); overflow-x: auto; white-space: nowrap; }
+        .navbar a { text-decoration: none; color: #4b5563; font-size: 14px; font-weight: 600; padding: 14px 0; border-bottom: 3px solid transparent; transition: all 0.2s; display: inline-block; flex-shrink: 0; }
+        .navbar a:hover, .navbar a.active { color: #692A85; border-bottom-color: #692A85; }
+
+        .container { flex: 1; padding: 32px 24px; max-width: 1280px; margin: 0 auto; width: 100%; }
+
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; background: white; padding: 20px 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-left: 5px solid #692A85; }
+        .page-header h2 { font-size: 20px; color: #111827; font-weight: 700; }
+        .page-header p { font-size: 13px; color: #6b7280; margin-top: 2px; }
+
+        .filter-panel { background: white; padding: 20px 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 28px; display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap; border-top: 3px solid #692A85; }
+        .filter-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 180px; }
+        .filter-group label { font-size: 12px; font-weight: 600; color: #374151; }
+        .filter-group input, .filter-group select { padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; background-color: #fff; width: 100%; outline: none; transition: border-color 0.2s; }
+        .filter-group input:focus, .filter-group select:focus { border-color: #692A85; box-shadow: 0 0 0 3px rgba(105, 42, 133, 0.1); }
+        
+        .btn-filter { background-color: #692A85; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; transition: background 0.2s; height: 41px; }
+        .btn-filter:hover { background-color: #522068; }
+        
+        .btn-clear { background-color: #4b5563; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-flex; align-items: center; height: 41px; transition: background 0.2s; }
+        .btn-clear:hover { background-color: #374151; }
+
+        .btn-advanced { background-color: #2563eb; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; height: 41px; transition: background 0.2s; }
+        .btn-advanced:hover { background-color: #1d4ed8; }
+
+        .btn-print-action { background-color: #059669; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; height: 41px; transition: background 0.2s; margin-left: auto; }
+        .btn-print-action:hover { background-color: #047857; }
+
+        /* Cards Executivos de Métricas */
+        .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; margin-bottom: 28px; }
+        .metric-card { background: white; padding: 22px 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-left: 5px solid #692A85; display: flex; flex-direction: column; justify-content: space-between; }
+        .metric-card.accent { border-left-color: #2563eb; }
+        .metric-card label { font-size: 11.5px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .metric-card h3 { font-size: 28px; color: #111827; font-weight: 700; margin-top: 8px; }
+
+        /* Grades de Relatórios em Blocos */
+        .grid-reports { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px; }
+        @media(max-width: 900px) { .grid-reports { grid-template-columns: 1fr; } }
+
+        .report-box { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-top: 4px solid #692A85; }
+        .report-box h4 { font-size: 15px; color: #111827; font-weight: 700; margin-bottom: 16px; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+
+        .table-data { width: 100%; border-collapse: collapse; text-align: left; font-size: 13.5px; }
+        .table-data th { padding: 12px 14px; border-bottom: 2px solid #e5e7eb; color: #374151; background-color: #f9fafb; font-weight: 600; }
+        .table-data td { padding: 12px 14px; border-bottom: 1px solid #f3f4f6; color: #1f2937; }
+        .table-data tr:hover td { background-color: #fcf8ff; }
+
+        .badge-status { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block; }
+        .badge-aguardando { background-color: #fef3c7; color: #92400e; }
+        .badge-atendimento { background-color: #e0e7ff; color: #3730a3; }
+        .badge-finalizado { background-color: #d1fae5; color: #065f46; }
+        .badge-cancelado { background-color: #fee2e2; color: #991b1b; }
+
+        .map-section, .chart-print-section { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-top: 4px solid #692A85; margin-bottom: 28px; width: 100%; }
+        .map-section h4, .chart-print-section h4 { font-size: 15px; color: #111827; font-weight: 700; margin-bottom: 16px; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; }
+        .map-controls { display: flex; gap: 16px; margin-bottom: 16px; align-items: flex-end; flex-wrap: wrap; background: #f9fafb; padding: 16px; border-radius: 6px; border: 1px solid #e5e7eb; }
+        
+        #mapa-sao-roque { width: 100%; height: 520px; border-radius: 6px; z-index: 1; border: 1px solid #d1d5db; position: relative; }
+        .chart-print-container { width: 100%; height: 260px; position: relative; }
+
+        /* Modais */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; width: 100%; max-width: 520px; border-radius: 8px; padding: 28px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); display: flex; flex-direction: column; gap: 16px; position: relative; z-index: 1001; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; }
+        .modal-header h3 { font-size: 18px; color: #111827; font-weight: 700; }
+        .btn-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #6b7280; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px; border-top: 1px solid #e5e7eb; padding-top: 16px; }
+
+        .alert-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: 2000; justify-content: center; align-items: center; }
+        .alert-modal-content { background: white; width: 100%; max-width: 420px; border-radius: 8px; padding: 28px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 14px; text-align: center; position: relative; }
+        .alert-modal-close { position: absolute; top: 12px; right: 16px; background: none; border: none; font-size: 20px; font-weight: bold; cursor: pointer; color: #6b7280; }
+        .alert-modal-icon { font-size: 36px; color: #d97706; margin-bottom: -4px; }
+        .alert-modal-title { font-size: 17px; font-weight: 700; color: #1f2937; }
+        .alert-modal-text { font-size: 13.5px; color: #4b5563; line-height: 1.5; }
+        .alert-modal-btn { background-color: #692A85; color: white; border: none; padding: 10px 22px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; margin: 0 auto; display: inline-block; }
+        .alert-modal-btn:hover { background-color: #522068; }
+
+        .footer { text-align: center; padding: 16px 0; font-size: 12px; color: #6b7280; background-color: #e5e7eb; margin-top: auto; border-top: 1px solid #d1d5db; }
+        .print-only-header { display: none; }
+
+        @page {
+            size: A4 portrait;
+            margin: 10mm;
+        }
+
+        /* Estilização Profissional para Impressão e PDF Oficial */
+        @media print {
+            .topbar, .navbar, .filter-panel, .map-section .map-controls, .footer, .modal-overlay, .alert-overlay, .btn-print-action { display: none !important; }
+            body { background: white; color: black; font-size: 9pt; }
+            .container { max-width: 100%; padding: 0; margin: 0; }
+            
+            .print-only-header { display: block; text-align: center; border-bottom: 3px solid #692A85; padding-bottom: 8px; margin-bottom: 14px; }
+            .print-only-header h2 { font-size: 13pt; color: #111827; text-transform: uppercase; font-weight: 800; letter-spacing: 0.5px; }
+            .print-only-header h3 { font-size: 10.5pt; color: #692A85; text-transform: uppercase; font-weight: 700; margin-top: 2px; }
+            .print-only-header p { font-size: 8pt; color: #374151; margin-top: 2px; }
+            
+            .page-header { display: none !important; }
+            
+            .metrics-grid { margin-bottom: 14px; gap: 10px; }
+            .metric-card { padding: 12px 16px; border: 1px solid #d1d5db; box-shadow: none; border-left: 4px solid #692A85 !important; }
+            .metric-card h3 { font-size: 18pt; color: #111827; }
+            
+            .grid-reports { margin-bottom: 14px; gap: 12px; }
+            .report-box { box-shadow: none; border: 1px solid #d1d5db; border-top: 3px solid #692A85 !important; padding: 14px; break-inside: avoid; page-break-inside: avoid; margin-bottom: 10px; }
+            .report-box h4 { margin-bottom: 8px; padding-bottom: 4px; font-size: 11pt; }
+            
+            .table-data th, .table-data td { padding: 5px 8px; font-size: 8.5pt; border-bottom: 1px solid #e5e7eb; }
+            .table-data th { background-color: #f3f4f6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+            .chart-print-section { display: block !important; box-shadow: none; border: 1px solid #d1d5db; border-top: 3px solid #692A85 !important; padding: 14px; break-inside: avoid; page-break-inside: avoid; margin-bottom: 14px; }
+            .chart-print-container { height: 200px; }
+
+            .map-section { display: block !important; box-shadow: none; border: 1px solid #d1d5db; border-top: 3px solid #692A85 !important; padding: 14px; break-inside: avoid; page-break-inside: avoid; }
+            #mapa-sao-roque { height: 350px !important; border: 1px solid #9ca3af; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="topbar">
+        <div class="title">{{ session.get('estabelecimento', 'CAPS II — São Roque') }}</div>
+        <div class="center-title">Gestão de Especialidades</div>
+        <div class="user-info">
+            Olá, <strong>{{ session.nome }}</strong>
+            {% if perfil %}
+                <span>{{ perfil }}</span>
+            {% endif %}
+            <a href="/logout" class="btn-logout">Sair</a>
+        </div>
+    </div>
+
+    <div class="navbar">
+        <a href="/dashboard">Consulta / Início</a>
+        <a href="/lista-espera">Lista de Espera & Regulação</a>
+        <a href="/guias-fluxo">Guias & Fluxos de Encaminhamento</a>
+        
+        {% if session.get('perfil') == 'NIVEL_I' %}
+            <a href="/admin/profissionais">Profissionais</a>
+            <a href="/admin/estabelecimentos">Unidades de Saúde</a>
+            <a href="/relatorios" class="active">Relatórios</a>
+            <a href="/admin/configuracoes">Configurações</a>
+        {% endif %}
+    </div>
+
+    <div class="container">
+        <!-- Cabeçalho Oficial de Impressão / PDF -->
+        <div class="print-only-header">
+            <h2>Prefeitura Municipal da Estância Turística de São Roque</h2>
+            <h3>Departamento de Saúde — Central de Regulação e CAPS II</h3>
+            <p style="font-size: 9pt; font-weight: 700; margin-top: 4px;">RELATÓRIO EXECUTIVO GERENCIAL DE INDICADORES DE SAÚDE</p>
+            <p style="font-size: 8pt; margin-top: 3px;">
+                Período de Análise: <strong>{{ data_inicio or 'Início' }}</strong> até <strong>{{ data_fim or 'Fim' }}</strong> | 
+                Unidade Filtrada: <strong>{% if unidade_filtro %}{% for est in estabelecimentos %}{% if est.id|string == unidade_filtro %}{{ est.nome }}{% endif %}{% endfor %}{% else %}Todas as Unidades da Rede{% endif %}</strong> | 
+                Especialidade: <strong>{{ modalidade_filtro or 'Todas as Modalidades' }}</strong>
+            </p>
+            <p style="font-size: 7.5pt; color: #4b5563; margin-top: 3px;">
+                Emitido por: <strong>{{ session.nome }}</strong> em <span id="dataEmissaoPrint"></span>
+            </p>
+        </div>
+
+        <div class="page-header">
+            <div>
+                <h2>Relatórios Executivos & Indicadores Gerenciais</h2>
+                <p>Painel analítico oficial para tomada de decisão, monitoramento de filas e gestão de demandas.</p>
+            </div>
+            <button type="button" class="btn-print-action" onclick="window.print()">🖨️ Imprimir / Gerar PDF Oficial</button>
+        </div>
+
+        <!-- Painel de Filtros -->
+        <form method="GET" action="/relatorios" class="filter-panel" id="filterForm">
+            <div class="filter-group">
+                <label>Data Inicial</label>
+                <input type="date" id="data_inicio" name="data_inicio" value="{{ data_inicio or '' }}" required>
+            </div>
+            <div class="filter-group">
+                <label>Data Final (Máx. 3 Meses)</label>
+                <input type="date" id="data_fim" name="data_fim" value="{{ data_fim or '' }}" required>
+            </div>
+            <div style="display: flex; gap: 10px; align-items: flex-end;">
+                <button type="submit" class="btn-filter" id="btnFiltrar">Filtrar Período</button>
+                <a href="/relatorios" class="btn-clear">Limpar</a>
+                <button type="button" class="btn-advanced" onclick="abrirModalAvancado()">Consulta Detalhada</button>
+            </div>
+        </form>
+
+        <!-- Cards de Métricas Principais -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <label>
+                    {% if unidade_filtro %}
+                        Total de Pacientes Vinculados à Unidade
+                    {% else %}
+                        Total de Pacientes na Base Municipal
+                    {% endif %}
+                </label>
+                <h3>{{ total_pacientes }}</h3>
+            </div>
+            <div class="metric-card accent">
+                <label>
+                    Volume de Solicitações no Período / Filtro
+                </label>
+                <h3>{{ total_geral_filtrado }}</h3>
+            </div>
+        </div>
+
+        <!-- Blocos Analíticos Lado a Lado -->
+        <div class="grid-reports">
+            <div class="report-box">
+                <h4>Demanda na Lista por Status Operacional</h4>
+                <table class="table-data">
+                    <thead>
+                        <tr>
+                            <th>Status da Solicitação</th>
+                            <th style="text-align: right;">Quantidade</th>
+                            <th style="text-align: right;">Percentual (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in status_counts %}
+                        <tr>
+                            <td><strong>{{ row.status }}</strong></td>
+                            <td style="text-align: right;">{{ row.quantidade }}</td>
+                            <td style="text-align: right; color: #6b7280; font-weight: 500;">
+                                {% if total_geral_filtrado > 0 %}
+                                    {{ "%.1f" | format((row.quantidade / total_geral_filtrado) * 100) }}%
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="3" style="color: #9ca3af; text-align: center; padding: 20px;">Nenhum registro encontrado para este critério.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="report-box">
+                <h4>Distribuição por Especialidade / Modalidade</h4>
+                <table class="table-data">
+                    <thead>
+                        <tr>
+                            <th>Modalidade de Atendimento</th>
+                            <th style="text-align: right;">Quantidade</th>
+                            <th style="text-align: right;">Percentual (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in modalidade_counts %}
+                        <tr>
+                            <td><strong>{{ row.modalidade_atendimento }}</strong></td>
+                            <td style="text-align: right;">{{ row.quantidade }}</td>
+                            <td style="text-align: right; color: #6b7280; font-weight: 500;">
+                                {% if total_geral_filtrado > 0 %}
+                                    {{ "%.1f" | format((row.quantidade / total_geral_filtrado) * 100) }}%
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="3" style="color: #9ca3af; text-align: center; padding: 20px;">Nenhum registro encontrado.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tabela Consolidada por Unidade -->
+        <div class="report-box" style="margin-bottom: 28px;">
+            <h4>Desdobramento Analítico por Unidade Solicitante e Status</h4>
+            <table class="table-data">
+                <thead>
+                    <tr>
+                        <th>Unidade de Saúde Solicitante</th>
+                        <th style="text-align: center;"><span class="badge-status badge-aguardando">Aguardando</span></th>
+                        <th style="text-align: center;"><span class="badge-status badge-atendimento">Em Atendimento</span></th>
+                        <th style="text-align: center;"><span class="badge-status badge-finalizado">Finalizado</span></th>
+                        <th style="text-align: center;"><span class="badge-status badge-cancelado">Cancelado</span></th>
+                        <th style="text-align: right;">Total Geral</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in unidade_counts %}
+                    <tr>
+                        <td><strong>{{ row.unidade }}</strong></td>
+                        <td style="text-align: center; color: #92400e; font-weight: 600;">{{ row.aguardando }}</td>
+                        <td style="text-align: center; color: #3730a3; font-weight: 600;">{{ row.em_atendimento }}</td>
+                        <td style="text-align: center; color: #065f46; font-weight: 600;">{{ row.atendido }}</td>
+                        <td style="text-align: center; color: #991b1b; font-weight: 600;">{{ row.cancelado }}</td>
+                        <td style="text-align: right; font-weight: 700; color: #692A85;">{{ row.total }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" style="color: #9ca3af; text-align: center; padding: 20px;">Nenhum encaminhamento registrado na rede.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Seção de Gráfico Executivo -->
+        <div class="chart-print-section">
+            <h4>Consolidado Gráfico de Solicitações por Unidade</h4>
+            <div class="chart-print-container">
+                <canvas id="graficoImpressao"></canvas>
+            </div>
+        </div>
+
+        <!-- Seção de Geoprocessamento -->
+        <div class="map-section">
+            <h4>Geoprocessamento de Demanda por Região (São Roque - SP)</h4>
+            
+            <div class="map-controls">
+                <div class="filter-group">
+                    <label>Filtrar por Modalidade</label>
+                    <select id="mapModalidade">
+                        <option value="todos">Todas as Modalidades</option>
+                        {% for row in modalidade_counts %}
+                        <option value="{{ row.modalidade_atendimento }}">{{ row.modalidade_atendimento }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Filtrar por Status Operacional</label>
+                    <select id="mapStatus">
+                        <option value="aguardando">Aguardando (Fila Ativa)</option>
+                        <option value="atendidos">Atendidos / Concluídos</option>
+                        <option value="cancelados">Cancelados / Desistências</option>
+                        <option value="em_atendimento">Em Atendimento</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-filter" id="btnAtualizarMapa" style="height: 41px;">Atualizar Mapa</button>
+                
+                <div style="display: flex; align-items: center; gap: 14px; margin-left: auto; background: white; padding: 8px 14px; border-radius: 6px; border: 1px solid #d1d5db; font-size: 12px;">
+                    <strong style="color: #374151;">Legenda:</strong>
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <span style="width: 12px; height: 12px; background-color: #692A85; border-radius: 50%; display: inline-block;"></span>
+                        <span style="color: #4b5563;">Baixa (Até 10)</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <span style="width: 12px; height: 12px; background-color: #d97706; border-radius: 50%; display: inline-block;"></span>
+                        <span style="color: #4b5563;">Média (11 a 25)</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <span style="width: 12px; height: 12px; background-color: #dc2626; border-radius: 50%; display: inline-block;"></span>
+                        <span style="color: #4b5563;">Crítica (&gt; 25)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Div do Mapa com indicador de depuração flutuante -->
+            <div id="mapa-sao-roque">
+                <div id="mapDebugInfo" style="position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.9); padding: 5px 10px; border-radius: 4px; font-size: 11px; z-index: 1000; border: 1px solid #ccc; font-weight: 600; color: #374151;">
+                    Unidades no Mapa: Carregando...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE ALERTA -->
+    <div id="modalAlerta" class="alert-overlay">
+        <div class="alert-modal-content">
+            <button type="button" class="alert-modal-close" onclick="fecharModalAlerta()">&times;</button>
+            <div class="alert-modal-icon">⚠️</div>
+            <div class="alert-modal-title">Atenção ao Período Selecionado</div>
+            <div class="alert-modal-text" id="alertaTexto">Para consultas superiores a 3 meses, por favor selecione uma Unidade ou Especialidade específica.</div>
+            <button type="button" class="alert-modal-btn" onclick="fecharModalAlerta()">Compreendido</button>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONSULTA DETALHADA -->
+    <div id="modalAvancado" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Consulta Detalhada Avançada</h3>
+                <button type="button" class="btn-close" onclick="fecharModalAvancado()">&times;</button>
+            </div>
+            
+            <form method="GET" action="/relatorios" id="formAvancado" style="display: flex; flex-direction: column; gap: 14px;">
+                <div class="filter-group" style="width: 100%;">
+                    <label>Data Inicial</label>
+                    <input type="date" id="adv_data_inicio" name="data_inicio" value="{{ data_inicio or '' }}" required>
+                </div>
+                <div class="filter-group" style="width: 100%;">
+                    <label>Data Final</label>
+                    <input type="date" id="adv_data_fim" name="data_fim" value="{{ data_fim or '' }}" required>
+                </div>
+                <div class="filter-group" style="width: 100%;">
+                    <label>Posto / Unidade Solicitante</label>
+                    <select id="adv_unidade" name="unidade_filtro">
+                        <option value="">Todas as Unidades</option>
+                        {% for est in estabelecimentos %}
+                        <option value="{{ est.id }}" {% if unidade_filtro == est.id|string %}selected{% endif %}>{{ est.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="filter-group" style="width: 100%;">
+                    <label>Especialidade / Modalidade</label>
+                    <select id="adv_modalidade" name="modalidade_filtro">
+                        <option value="">Todas as Especialidades</option>
+                        {% for mod in modalidades %}
+                        <option value="{{ mod }}" {% if modalidade_filtro == mod %}selected{% endif %}>{{ mod }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-clear" onclick="fecharModalAvancado()">Cancelar</button>
+                    <button type="submit" class="btn-filter">Gerar Relatório Analítico</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts de Interatividade, Chart.js e Leaflet -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const agora = new Date();
+        document.getElementById('dataEmissaoPrint').innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
+
+        // Configuração do Gráfico Executivo Horizontal
+        const unidadesLabels = [];
+        const unidadesTotais = [];
+        
+        {% for row in unidade_counts %}
+            unidadesLabels.push("{{ row.unidade }}");
+            unidadesTotais.push({{ row.total }});
+        {% endfor %}
+
+        const ctxGrafico = document.getElementById('graficoImpressao').getContext('2d');
+        const graficoImpressao = new Chart(ctxGrafico, {
+            type: 'bar',
+            data: {
+                labels: unidadesLabels,
+                datasets: [{
+                    label: 'Total de Solicitações',
+                    data: unidadesTotais,
+                    backgroundColor: '#692A85',
+                    borderRadius: 6,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: { color: '#f3f4f6' },
+                        ticks: { stepSize: 1, font: { size: 11 } }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { font: { size: 11, weight: '600' }, color: '#374151' }
+                    }
+                }
+            }
+        });
+
+        const totalStatusRegistros = {{ status_counts | length }};
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('data_inicio') && totalStatusRegistros === 0) {
+            mostrarAlertaCustomizado("Nenhum registro foi encontrado para o período ou critérios selecionados.");
+        }
+
+        // Inicialização do Mapa Leaflet
+        const map = L.map('mapa-sao-roque').setView([-23.5325, -47.1353], 12);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        let camadaRegioes = L.layerGroup().addTo(map);
+
+        function carregarDadosMapa() {
+            const modalidadeSelect = document.getElementById('mapModalidade').value;
+            const statusSelect = document.getElementById('mapStatus').value;
+
+            let statusFiltro = 'Aguardando';
+            if (statusSelect === 'atendidos') statusFiltro = 'Atendido / Finalizado';
+            if (statusSelect === 'cancelados') statusFiltro = 'Cancelado / Desistência';
+            if (statusSelect === 'em_atendimento') statusFiltro = 'Em Atendimento';
+
+            fetch(`/api/relatorios/mapa?modalidade=${encodeURIComponent(modalidadeSelect)}&status=${encodeURIComponent(statusFiltro)}`)
+                .then(res => res.json())
+                .then(response => {
+                    camadaRegioes.clearLayers();
+                    const debugBox = document.getElementById('mapDebugInfo');
+
+                    if (response.sucesso && response.dados.length > 0) {
+                        const bounds = [];
+                        let contadorUnidades = 0;
+
+                        response.dados.forEach(item => {
+                            let lat = parseFloat(item.lat);
+                            let lng = parseFloat(item.lng);
+                            let total = parseInt(item.total || 0);
+
+                            if (!isNaN(lat) && !isNaN(lng)) {
+                                // Se houver demanda, o círculo ganha cor proporcional; se for 0, fica cinza discreto
+                                let raio = total > 0 ? Math.min(Math.max(total * 15, 250), 900) : 180;
+                                let corHex = total > 25 ? '#dc2626' : (total > 10 ? '#d97706' : '#692A85');
+                                if (total === 0) corHex = '#9ca3af';
+
+                                const circulo = L.circle([lat, lng], {
+                                    color: corHex,
+                                    weight: 2,
+                                    fillColor: corHex,
+                                    fillOpacity: total > 0 ? 0.30 : 0.15,
+                                    radius: raio
+                                });
+
+                                circulo.bindPopup(`
+                                    <div style="font-family: 'Segoe UI'; font-size: 13px; line-height: 1.4;">
+                                        <strong style="color: #692A85; font-size: 14px;">${item.unidade}</strong><br>
+                                        Status: <strong>${statusFiltro}</strong><br>
+                                        Modalidade: <strong>${modalidadeSelect === 'todos' ? 'Todas (Consolidado)' : modalidadeSelect}</strong><br>
+                                        Demandas Totais: <strong style="color: #dc2626; font-size: 14px;">${total}</strong> pacientes
+                                    </div>
+                                `);
+
+                                camadaRegioes.addLayer(circulo);
+                                bounds.push([lat, lng]);
+                                contadorUnidades++;
+                            }
+                        });
+
+                        debugBox.innerText = `Unidades no Mapa: ${contadorUnidades}`;
+
+                        if (bounds.length > 0) {
+                            map.fitBounds(bounds, { padding: [60, 60], maxZoom: 13 });
+                        }
+                    } else {
+                        debugBox.innerText = `Unidades no Mapa: 0`;
+                    }
+                })
+                .catch(err => {
+                    console.error('Erro ao carregar geoprocessamento:', err);
+                    document.getElementById('mapDebugInfo').innerText = `Erro na API`;
+                });
+        }
+
+        carregarDadosMapa();
+
+        document.getElementById('btnAtualizarMapa').addEventListener('click', function() {
+            carregarDadosMapa();
+        });
+
+        function abrirModalAvancado() {
+            document.getElementById('modalAvancado').style.display = 'flex';
+        }
+
+        function fecharModalAvancado() {
+            document.getElementById('modalAvancado').style.display = 'none';
+        }
+
+        function mostrarAlertaCustomizado(mensagem) {
+            document.getElementById('alertaTexto').innerText = mensagem;
+            document.getElementById('modalAlerta').style.display = 'flex';
+        }
+
+        function fecharModalAlerta() {
+            document.getElementById('modalAlerta').style.display = 'none';
+        }
+
+        const inputInicio = document.getElementById('data_inicio');
+        const inputFim = document.getElementById('data_fim');
+        const filterForm = document.getElementById('filterForm');
+
+        filterForm.addEventListener('submit', function(e) {
+            const inicio = new Date(inputInicio.value);
+            const fim = new Date(inputFim.value);
+            
+            if (inicio > fim) {
+                mostrarAlertaCustomizado('A data inicial não pode ser maior que a data final.');
+                e.preventDefault();
+                return;
+            }
+
+            const diferencaDias = (fim - inicio) / (1000 * 60 * 60 * 24);
+            const unidadeSelecionada = urlParams.get('unidade_filtro');
+            if (diferencaDias > 92 && !unidadeSelecionada) {
+                mostrarAlertaCustomizado('Para consultas superiores a 3 meses, utilize uma Unidade ou Especialidade específica.');
+                e.preventDefault();
+            }
+        });
+    </script>
+
+    <div class="footer">Intranet CAPS II — São Roque © 2026. Módulo Executivo de Indicadores de Saúde.</div>
+</body>
+</html>

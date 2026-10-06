@@ -1,0 +1,989 @@
+{% set perfil = session.get('perfil') %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intranet CAPS II - Painel Principal</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; }
+        
+        .topbar { background-color: #692A85; color: white; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .topbar .title { font-size: 16px; font-weight: 600; text-transform: uppercase; }
+        .topbar .user-info { font-size: 13px; display: flex; align-items: center; gap: 15px; }
+        .topbar .user-info span { background: rgba(255,255,255,0.15); padding: 4px 10px; border-radius: 12px; font-weight: 500; }
+        .btn-logout { background-color: #dc2626; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; transition: background 0.2s; }
+        .btn-logout:hover { background-color: #b91c1c; }
+
+        .navbar { background: white; border-bottom: 1px solid #e5e7eb; padding: 0 24px; display: flex; flex-direction: row; gap: 20px; width: 100%; overflow-x: auto; white-space: nowrap; }
+        .navbar a { text-decoration: none; color: #4b5563; font-size: 14px; font-weight: 600; padding: 14px 0; border-bottom: 3px solid transparent; transition: all 0.2s; display: inline-block; flex-shrink: 0; }
+        .navbar a:hover, .navbar a.active { color: #692A85; border-bottom-color: #692A85; }
+
+        .container { flex: 1; padding: 24px; max-width: 1200px; margin: 0 auto; width: 100%; display: block; }
+
+        .search-card { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 24px; border-top: 4px solid #692A85; width: 100%; }
+        .search-card h2 { font-size: 18px; color: #1f2937; margin-bottom: 6px; }
+        .search-card p { font-size: 13px; color: #6b7280; margin-bottom: 18px; }
+
+        .search-input { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 15px; outline: none; }
+        .search-input:focus { border-color: #692A85; box-shadow: 0 0 0 3px rgba(105, 42, 133, 0.1); }
+        .btn-search { background-color: #692A85; color: white; border: none; padding: 12px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
+        .btn-search:hover { background-color: #521d6b; }
+        .btn-clear { background-color: #4b5563; color: white; border: none; padding: 12px 18px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
+        .btn-clear:hover { background-color: #374151; }
+        .btn-novo { background-color: #059669; color: white; border: none; padding: 12px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
+        .btn-novo:hover { background-color: #047857; }
+
+        .alert { padding: 12px 16px; border-radius: 6px; font-size: 14px; margin-bottom: 20px; }
+        .alert-success { background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .alert-warning { background-color: #fffbeb; color: #92400e; border: 1px solid #fef3c7; }
+        .alert-danger { background-color: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+        .results-panel { display: none; background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); width: 100%; margin-bottom: 16px; }
+        .patient-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb; margin-bottom: 16px; }
+        .patient-name { font-size: 20px; font-weight: 700; color: #111827; }
+        .patient-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
+        .meta-item label { display: block; font-size: 12px; color: #6b7280; font-weight: 600; text-transform: uppercase; }
+        .meta-item span { font-size: 14px; color: #1f2937; font-weight: 500; }
+
+        .action-buttons { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-edit { background-color: #d97706; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .btn-edit:hover { background-color: #b45309; }
+        .btn-history { background-color: #7c3aed; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .btn-history:hover { background-color: #6d28d9; }
+        .btn-lista { background-color: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .btn-lista:hover { background-color: #1d4ed8; }
+
+        .audit-footer { font-size: 12px; color: #1d4ed8; padding-top: 12px; border-top: 1px dashed #93c5fd; font-weight: 600; }
+
+        #listaCompletaContainer { display: none; margin-top: 20px; }
+        .paciente-card-lista { background: white; padding: 16px 20px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #692A85; }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; width: 100%; max-width: 650px; border-radius: 8px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 20px; }
+        .modal-header h3 { font-size: 18px; color: #111827; }
+        .btn-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #6b7280; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-group-full { grid-column: span 2; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; transition: border-color 0.2s; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #692A85; }
+        
+        .campo-erro { border-color: #dc2626 !important; background-color: #fef2f2; }
+        .msg-erro-modal { display: none; background-color: #fef2f2; color: #991b1b; border: 1px solid #fecaca; padding: 10px; border-radius: 6px; font-size: 13px; margin-bottom: 16px; font-weight: 600; }
+
+        .modal-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 16px; }
+        .btn-cancel { background: #e5e7eb; color: #374151; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .btn-save { background: #692A85; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .btn-save:hover { background: #521d6b; }
+
+        .footer { text-align: center; padding: 14px 0; font-size: 12px; color: #6b7280; background-color: #e5e7eb; margin-top: auto; }
+    </style>
+</head>
+<body>
+
+    <div class="topbar">
+        <div class="title">{{ session.get('estabelecimento', 'CAPS II — São Roque') }}</div>
+        <div style="font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Gestão de Especialidades</div>
+        <div class="user-info">
+            Olá, <strong>{{ session.nome }}</strong>
+            <span>{{ perfil }}</span>
+            <a href="/logout" class="btn-logout">Sair</a>
+        </div>
+    </div>
+
+    <div class="navbar">
+        <a href="/dashboard" class="active">Consulta / Início</a>
+        <a href="/lista-espera">Lista de Espera & Regulação</a>
+        <a href="/guias-fluxo">Guias & Fluxos de Encaminhamento</a>
+        
+        {% if perfil == 'NIVEL_I' %}
+            <a href="/admin/profissionais">Profissionais</a>
+            <a href="/admin/estabelecimentos">Unidades de Saúde</a>
+            <a href="/relatorios">Relatórios</a>
+            <a href="/admin/configuracoes">Configurações</a>
+        {% endif %}
+    </div>
+
+    <div class="container">
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <div class="search-card">
+            <h2>Pesquisar Paciente</h2>
+            <p>Utilize o campo de documentos ou o campo de nome para localizar o prontuário com precisão.</p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 15px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="searchDoc" style="font-size: 12px; color: #4b5563; font-weight: 600; margin-bottom: 4px; display: block;">Por Documento / Prontuário</label>
+                    <input type="text" id="searchDoc" class="search-input" placeholder="CPF, Cartão SUS ou Prontuário..." onkeypress="handleKeyPress(event)">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="searchNome" style="font-size: 12px; color: #4b5563; font-weight: 600; margin-bottom: 4px; display: block;">Por Nome do Paciente ou da Mãe</label>
+                    <input type="text" id="searchNome" class="search-input" placeholder="Digite o nome..." onkeypress="handleKeyPress(event)" autofocus>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 12px;">
+                <button type="button" class="btn-search" onclick="executarBusca(1)">Pesquisar</button>
+                <button type="button" class="btn-clear" onclick="limparBusca()">Limpar</button>
+                
+                {% if perfil != 'NIVEL_III' %}
+                    <button type="button" class="btn-novo" onclick="abrirModalNovo()" style="margin-left: auto;">+ Novo Paciente</button>
+                {% endif %}
+            </div>
+        </div>
+
+        <div id="resultsPanel" class="results-panel">
+            <div class="patient-header">
+                <div>
+                    <div class="patient-name" id="resNome">-</div>
+                    <span style="font-size: 13px; color: #4b5563; font-weight: 600;" id="resUnidadeRef">Unidade de Referência: -</span>
+                </div>
+                <div class="action-buttons">
+                    <button type="button" class="btn-edit" onclick="abrirModalEdicao()">
+                        {% if perfil == 'NIVEL_III' %}Atualizar Telefones{% else %}Editar Cadastro{% endif %}
+                    </button>
+                    
+                    <button type="button" class="btn-history" onclick="abrirModalHistorico()">Ver Histórico</button>
+
+                    {% if perfil in ['NIVEL_I', 'NIVEL_II'] %}
+                        <button type="button" class="btn-lista" onclick="abrirModalListaEspera()">+ Entrar na Lista de Espera</button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="patient-meta">
+                <div class="meta-item">
+                    <label>Nº Prontuário CAPS</label>
+                    <span id="resProntuario" style="font-weight: 700; color: #692A85;">-</span>
+                </div>
+                <div class="meta-item">
+                    <label>CPF</label>
+                    <span id="resCPF">-</span>
+                </div>
+                <div class="meta-item">
+                    <label>Cartão SUS</label>
+                    <span id="resSUS">-</span>
+                </div>
+                <div class="meta-item">
+                    <label>Data de Nascimento</label>
+                    <span id="resNasc">-</span>
+                </div>
+                <div class="meta-item">
+                    <label>Sexo</label>
+                    <span id="resSexo">-</span>
+                </div>
+                <div class="meta-item">
+                    <label>Nome da Mãe</label>
+                    <span id="resMae">-</span>
+                </div>
+                <div class="meta-item">
+                    <label>Telefone Principal</label>
+                    <span id="resTel">-</span>
+                </div>
+                <div class="meta-item">
+                    <label>Telefone Recado</label>
+                    <span id="resTelRecado">-</span>
+                </div>
+            </div>
+
+            <div class="audit-footer" id="resAudit">
+                Cadastrado em - por - | Última atualização em - por -
+            </div>
+        </div>
+
+        <div id="listaCompletaContainer">
+            <!-- CABEÇALHO DA LISTAGEM COM PAGINAÇÃO NO TOPO -->
+            <div id="cabecalhoListaContainer" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; background: white; padding: 16px 20px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); border-left: 4px solid #692A85;">
+                <h3 id="tituloListaResultados" style="font-size: 16px; color: #374151; font-weight: 600; margin: 0;"></h3>
+                <div id="paginacaoTopo" style="display: flex; gap: 8px; align-items: center;"></div>
+            </div>
+            
+            <div id="cardsListaPacientes"></div>
+        </div>
+
+    </div>
+
+    <!-- MODAL DE CADASTRO / EDIÇÃO DE PACIENTE -->
+    <div id="modalPaciente" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitulo">Cadastrar Novo Paciente</h3>
+                <button type="button" class="btn-close" onclick="fecharModal()">&times;</button>
+            </div>
+
+            <div id="msgErroModal" class="msg-erro-modal">
+                ⚠️ Por favor, preencha corretamente todos os campos destacados em vermelho antes de salvar.
+            </div>
+
+            <form id="formPaciente" method="POST" action="/paciente/salvar" onsubmit="return validarFormulario(event)">
+                <input type="hidden" id="paciente_id" name="id">
+                
+                <div class="form-grid">
+                    <div class="form-group form-group-full">
+                        <label for="nome">Nome Completo do Paciente *</label>
+                        <input type="text" id="nome" name="nome" placeholder="Ex: João da Silva Santos">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="numero_prontuario">Nº Prontuário CAPS *</label>
+                        <input type="text" id="numero_prontuario" name="numero_prontuario" placeholder="Ex: 1232">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cpf">CPF *</label>
+                        <input type="text" id="cpf" name="cpf" placeholder="000.000.000-00" maxlength="14" oninput="mascaraCPF(this)">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cartao_sus">Cartão SUS (CNS) *</label>
+                        <input type="text" id="cartao_sus" name="cartao_sus" placeholder="000 0000 0000 0000" maxlength="18" oninput="mascaraSUS(this)">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="data_nascimento">Data de Nascimento *</label>
+                        <input type="date" id="data_nascimento" name="data_nascimento" max="9999-12-31">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sexo">Sexo *</label>
+                        <select id="sexo" name="sexo">
+                            <option value="">Selecione...</option>
+                            <option value="Masculino">Masculino</option>
+                            <option value="Feminino">Feminino</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group form-group-full">
+                        <label for="nome_mae">Nome da Mãe *</label>
+                        <input type="text" id="nome_mae" name="nome_mae" placeholder="Ex: Maria das Dores Santos">
+                    </div>
+
+                    <div class="form-group form-group-full">
+                        <label for="unidade_referencia_id">Unidade de Referência (Posto/UBS) *</label>
+                        <select id="unidade_referencia_id" name="unidade_referencia_id">
+                            <option value="">Selecione a unidade de saúde...</option>
+                            {% for est in estabelecimentos %}
+                                <option value="{{ est.id }}">{{ est.nome }} ({{ est.tipo }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="telefone_principal">Telefone Principal *</label>
+                        <input type="text" id="telefone_principal" name="telefone_principal" placeholder="(11) 90000-0000" maxlength="15" oninput="mascaraTelDinamica(this)">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="telefone_recado">Telefone de Recado *</label>
+                        <input type="text" id="telefone_recado" name="telefone_recado" placeholder="(11) 4000-0000" maxlength="15" oninput="mascaraTelDinamica(this)">
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+                    <button type="submit" class="btn-save">Salvar Cadastro</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE INSERÇÃO NA LISTA DE ESPERA -->
+    <div id="modalListaEspera" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Inserir Paciente na Lista de Espera</h3>
+                <button type="button" class="btn-close" onclick="fecharModalLista()">&times;</button>
+            </div>
+
+            <!-- Alerta visual moderno para duplicidade ativa -->
+            <div id="avisoDuplicidadeFila" style="display: none;" class="alert alert-warning">
+                <strong>Atenção:</strong> Este paciente já possui uma solicitação ativa (<span id="textoEspecialidadeAtiva" style="font-weight: 700;"></span>) aguardando ou em atendimento. Não é permitido duplicar a mesma modalidade.
+            </div>
+
+            <form id="formInserirFila" method="POST" action="/lista-espera/inserir" onsubmit="return validarInsercaoFila(event)">
+                <input type="hidden" id="le_usuario_id" name="usuario_id">
+                
+                <div class="form-group">
+                    <label>Paciente</label>
+                    <input type="text" id="le_paciente_nome" readonly style="background: #f3f4f6; font-weight: 700;">
+                </div>
+
+                <div class="form-group">
+                    <label for="modalidade_atendimento">Modalidade de Atendimento Solicitada *</label>
+                    <select id="modalidade_atendimento" name="modalidade_atendimento" required onchange="verificarDuplicidadeModalidade(this.value)">
+                        <option value="">Selecione a modalidade...</option>
+                    </select>
+                    <small id="avisoFaixaEtaria" style="color: #692A85; font-size: 12px; font-weight: 600; margin-top: 4px; display: block;"></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="input_cid_busca">Diagnóstico / CID (CID-10 ou CID-11) *</label>
+                    <input type="text" id="input_cid_busca" placeholder="Digite o código (ex: F32 ou 6A02) ou a descrição..." list="lista_cids_opcoes" autocomplete="off" required>
+                    
+                    <datalist id="lista_cids_opcoes">
+                        {% for cid in cids %}
+                            <option value="[{{ cid.versao }}] {{ cid.codigo }} - {{ cid.descricao }}">
+                        {% endfor %}
+                    </datalist>
+
+                    <input type="hidden" id="cid_id" name="cid_id" required>
+                    <small style="color: #6b7280; font-size: 11px; margin-top: 4px; display: block;">Digite para filtrar e selecione uma das opções da lista sugerida.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="observacao_atendimento">Observações de Triagem / Motivo do Encaminhamento (Opcional)</label>
+                    <textarea name="observacao_atendimento" rows="3" placeholder="Descreva brevemente a queixa ou justificativa do encaminhamento..."></textarea>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="fecharModalLista()">Cancelar</button>
+                    <button type="submit" id="btnSalvarFila" class="btn-save">Inserir na Fila</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE HISTÓRICO DE ATENDIMENTOS -->
+    <div id="modalHistorico" class="modal-overlay">
+        <div class="modal-content" style="max-width: 950px; width: 95%;">
+            <div class="modal-header">
+                <h3>Histórico de Especialidades e Assiduidade</h3>
+                <button type="button" class="btn-close" onclick="fecharModalHistorico()">&times;</button>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <span id="histPacienteNome" style="font-weight: 700; color: #374151; font-size: 15px;">-</span>
+                <button type="button" onclick="limparFiltrosHistorico()" style="background: #e5e7eb; border: none; padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; color: #374151;">Limpar Filtros ↺</button>
+            </div>
+
+            <div style="min-height: 250px; max-height: 420px; overflow-y: auto; overflow-x: visible; margin-bottom: 15px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
+                    <thead>
+                        <tr style="background: #f3f4f6; color: #4b5563; border-bottom: 2px solid #e5e7eb;">
+                            <th style="padding: 12px; position: relative; width: 35%;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleMenuFiltro(event, 'menuFiltroEspec')">
+                                    <span>Especialidade <small id="filtroEspecAtivo" style="color: #692A85; font-weight: bold;"></small></span>
+                                    <span style="font-size: 10px; color: #6b7280;">▼</span>
+                                </div>
+                                <div id="menuFiltroEspec" style="display: none; position: absolute; top: 100%; left: 0; background: white; border: 1px solid #d1d5db; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 6px; padding: 6px; z-index: 9999; min-width: 220px;">
+                                    <div onclick="filtrarTabelaHistorico('especialidade', '')" style="padding: 6px 10px; font-size: 12px; cursor: pointer; border-bottom: 1px solid #f3f4f6; font-weight: 600; color: #692A85;">[ Exibir Todas ]</div>
+                                    <div id="opcoesFiltroEspec"></div>
+                                </div>
+                            </th>
+
+                            <th style="padding: 12px; position: relative; width: 25%;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleMenuFiltro(event, 'menuFiltroStatus')">
+                                    <span>Status <small id="filtroStatusAtivo" style="color: #692A85; font-weight: bold;"></small></span>
+                                    <span style="font-size: 10px; color: #6b7280;">▼</span>
+                                </div>
+                                <div id="menuFiltroStatus" style="display: none; position: absolute; top: 100%; left: 0; background: white; border: 1px solid #d1d5db; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 6px; padding: 6px; z-index: 9999; min-width: 180px;">
+                                    <div onclick="filtrarTabelaHistorico('status', '')" style="padding: 6px 10px; font-size: 12px; cursor: pointer; border-bottom: 1px solid #f3f4f6; font-weight: 600; color: #692A85;">[ Exibir Todos ]</div>
+                                    <div id="opcoesFiltroStatus"></div>
+                                </div>
+                            </th>
+
+                            <th style="padding: 12px; width: 20%;">Entrada</th>
+                            <th style="padding: 12px; width: 20%;">Assiduidade</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaHistoricoCorpo">
+                        <tr>
+                            <td colspan="4" style="padding: 12px; text-align: center; color: #6b7280;">Carregando histórico...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="fecharModalHistorico()">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Intranet CAPS II — São Roque &copy; 2026.
+    </div>
+
+    <script>
+        const PERFIL_USUARIO = "{{ perfil }}";
+        let pacienteAtual = null;
+        let listaPacientesCache = [];
+        let historicoPacienteCache = [];
+        let dadosHistoricoBrutos = [];
+        let filtroEspecialidadeAtual = '';
+        let filtroStatusAtual = '';
+        let paginaAtualGlobal = 1;
+        let totalPaginasGlobal = 1;
+
+        const cbosCadastrados = [
+            {% for cbo in cbos %}
+            {
+                ocupacao: "{{ cbo.ocupacao }}",
+                idade_minima: {{ cbo.idade_minima if cbo.idade_minima is not none else 'null' }},
+                idade_maxima: {{ cbo.idade_maxima if cbo.idade_maxima is not none else 'null' }}
+            },
+            {% endfor %}
+        ];
+
+        const mapaCids = {
+            {% for cid in cids %}
+            "[{{ cid.versao }}] {{ cid.codigo }} - {{ cid.descricao }}": "{{ cid.id }}",
+            {% endfor %}
+        };
+
+        document.getElementById('input_cid_busca')?.addEventListener('input', function() {
+            const valorDigitado = this.value;
+            const inputHiddenId = document.getElementById('cid_id');
+            if (mapaCids[valorDigitado]) {
+                inputHiddenId.value = mapaCids[valorDigitado];
+                this.setCustomValidity("");
+            } else {
+                inputHiddenId.value = "";
+                this.setCustomValidity("Por favor, selecione um CID válido a partir da lista sugerida.");
+            }
+        });
+
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') {
+                executarBusca(1);
+            }
+        }
+
+        function limparBusca() {
+            document.getElementById('searchDoc').value = '';
+            document.getElementById('searchNome').value = '';
+            document.getElementById('resultsPanel').style.display = 'none';
+            document.getElementById('listaCompletaContainer').style.display = 'none';
+            pacienteAtual = null;
+        }
+
+        function executarBusca(page = 1) {
+            const doc = document.getElementById('searchDoc').value.trim();
+            const nome = document.getElementById('searchNome').value.trim();
+            const panel = document.getElementById('resultsPanel');
+            const listaContainer = document.getElementById('listaCompletaContainer');
+            
+            panel.style.display = 'none';
+            listaContainer.style.display = 'none';
+            paginaAtualGlobal = page;
+
+            fetch(`/api/paciente/buscar?doc=${encodeURIComponent(doc)}&nome=${encodeURIComponent(nome)}&page=${page}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.sucesso && data.encontrado) {
+                        listaPacientesCache = data.dados;
+                        totalPaginasGlobal = data.total_paginas || 1;
+
+                        if (data.dados.length === 1 && (doc !== "" || nome !== "") && page === 1 && data.total_registros === 1) {
+                            pacienteAtual = data.dados[0];
+                            preencherPainelUnico(pacienteAtual);
+                            panel.style.display = 'block';
+                        } else {
+                            let termoDescricao = doc ? `Documento: ${doc}` : `Nome: ${nome}`;
+                            if (!doc && !nome) termoDescricao = "Relação Geral";
+                            exibirListaPacientes(data.dados, `Resultados da busca (${termoDescricao}) - Total: ${data.total_registros} registros`);
+                        }
+                    } else {
+                        alert(data.mensagem || 'Nenhum paciente encontrado.');
+                        pacienteAtual = null;
+                    }
+                })
+                .catch(err => console.error('Erro na busca:', err));
+        }
+
+        function formatarProntuarioVisual(pront) {
+            if (!pront) return 'Não informado';
+            return pront.toString().trim();
+        }
+
+        function preencherPainelUnico(p) {
+            document.getElementById('resNome').innerText = p.nome;
+            document.getElementById('resProntuario').innerText = formatarProntuarioVisual(p.numero_prontuario);
+            document.getElementById('resCPF').innerText = p.cpf_formatado || 'Não informado';
+            document.getElementById('resSUS').innerText = p.cartao_sus_formatado || 'Não informado';
+            document.getElementById('resNasc').innerText = formatarDataBR(p.data_nascimento) || 'Não informada';
+            document.getElementById('resSexo').innerText = p.sexo || 'Não informado';
+            document.getElementById('resMae').innerText = p.nome_mae || 'Não informado';
+            document.getElementById('resTel').innerText = p.telefone_principal || 'Não informado';
+            document.getElementById('resTelRecado').innerText = p.telefone_recado || 'Não informado';
+            document.getElementById('resUnidadeRef').innerText = `Unidade de Referência: ${p.unidade_referencia_nome}`;
+            document.getElementById('resAudit').innerText = `Cadastrado em ${p.created_at} por ${p.criado_por_nome} | Última atualização em ${p.updated_at} por ${p.atualizado_por_nome}`;
+        }
+
+        function calcularIdadeAnos(dataNasc) {
+            if (!dataNasc) return null;
+            const hoje = new Date();
+            const nascimento = new Date(dataNasc);
+            let idade = hoje.getFullYear() - nascimento.getFullYear();
+            const m = hoje.getMonth() - nascimento.getMonth();
+            if (m < 0 || (m === 0 && hoje.getDate() < nascimento.getDate())) {
+                idade--;
+            }
+            return idade;
+        }
+
+        function calcularIdade(dataNasc) {
+            const idade = calcularIdadeAnos(dataNasc);
+            if (idade === null) return '';
+            return ` (${idade} anos)`;
+        }
+
+        function formatarDataBR(dataStr) {
+            if (!dataStr) return 'Não informada';
+            const partes = dataStr.split('-');
+            if (partes.length === 3) {
+                return `${partes[2]}/${partes[1]}/${partes[0]}`;
+            }
+            return dataStr;
+        }
+
+        function exibirListaPacientes(pacientes, titulo) {
+            const container = document.getElementById('cardsListaPacientes');
+            document.getElementById('tituloListaResultados').innerText = `${titulo} (Página ${paginaAtualGlobal} de ${totalPaginasGlobal})`;
+            
+            // Botões de Paginação no Topo
+            const paginacaoTopo = document.getElementById('paginacaoTopo');
+            paginacaoTopo.innerHTML = '';
+            if (totalPaginasGlobal > 1) {
+                paginacaoTopo.innerHTML = `
+                    <span style="font-size: 13px; color: #4b5563;">Pág. <strong>${paginaAtualGlobal}</strong>/<strong>${totalPaginasGlobal}</strong></span>
+                    ${paginaAtualGlobal > 1 ? `<button type="button" class="btn-clear" style="padding: 6px 12px; font-size: 13px;" onclick="executarBusca(${paginaAtualGlobal - 1})">← Voltar</button>` : `<button type="button" class="btn-clear" style="padding: 6px 12px; font-size: 13px; opacity: 0.5; cursor: not-allowed;" disabled>← Voltar</button>`}
+                    ${paginaAtualGlobal < totalPaginasGlobal ? `<button type="button" class="btn-search" style="padding: 6px 12px; font-size: 13px;" onclick="executarBusca(${paginaAtualGlobal + 1})">Avançar →</button>` : `<button type="button" class="btn-search" style="padding: 6px 12px; font-size: 13px; opacity: 0.5; cursor: not-allowed;" disabled>Avançar →</button>`}
+                `;
+            }
+
+            container.innerHTML = '';
+
+            pacientes.forEach((p, index) => {
+                const idadeFormatada = calcularIdade(p.data_nascimento);
+                const dataNascBR = formatarDataBR(p.data_nascimento);
+                const cpfExibido = p.cpf_formatado || 'Não informado';
+                const cnsExibido = p.cartao_sus_formatado || 'Não informado';
+                const nomeMae = p.nome_mae || 'Não informada';
+                const telPrin = p.telefone_principal || 'Não informado';
+                const telRec = p.telefone_recado || 'Não informado';
+                const prontuarioFormatado = formatarProntuarioVisual(p.numero_prontuario);
+                
+                const card = document.createElement('div');
+                card.className = 'paciente-card-lista';
+                card.innerHTML = `
+                    <div class="paciente-info-basica" style="display: flex; flex-direction: column; gap: 6px;">
+                        <h4 style="font-size: 16px; color: #111827; margin: 0;">
+                            ${p.nome} <span style="font-size: 13px; font-weight: normal; color: #4b5563;">${idadeFormatada}</span>
+                        </h4>
+                        <p style="font-size: 13px; color: #4b5563; margin: 0;">
+                            CPF: <strong>${cpfExibido}</strong> &bull; Nasc: <strong>${dataNascBR}</strong> &bull; Prontuário: <strong style="color: #692A85;">${prontuarioFormatado}</strong>
+                        </p>
+                        <p style="font-size: 13px; color: #4b5563; margin: 0;">
+                            Mãe: <strong>${nomeMae}</strong> &bull; SUS: <strong>${cnsExibido}</strong>
+                        </p>
+                        <p style="font-size: 13px; color: #6b7280; margin: 0;">
+                            Tel: <strong>${telPrin}</strong> | Recado: <strong>${telRec}</strong>
+                        </p>
+                    </div>
+                    <button type="button" class="btn-search" style="padding: 8px 16px; font-size: 13px; white-space: nowrap;" onclick="selecionarPacienteCache(${index})">Ver Detalhes</button>
+                `;
+                container.appendChild(card);
+            });
+
+            // Botões de Paginação no Rodapé da Lista
+            if (totalPaginasGlobal > 1) {
+                const paginacaoDiv = document.createElement('div');
+                paginacaoDiv.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding: 16px 20px; background: white; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); border-left: 4px solid #692A85;";
+                paginacaoDiv.innerHTML = `
+                    <span style="font-size: 13px; color: #4b5563;">Página <strong>${paginaAtualGlobal}</strong> de <strong>${totalPaginasGlobal}</strong></span>
+                    <div style="display: flex; gap: 8px;">
+                        ${paginaAtualGlobal > 1 ? `<button type="button" class="btn-clear" style="padding: 8px 16px; font-size: 13px;" onclick="executarBusca(${paginaAtualGlobal - 1})">← Voltar</button>` : ''}
+                        ${paginaAtualGlobal < totalPaginasGlobal ? `<button type="button" class="btn-search" style="padding: 8px 16px; font-size: 13px;" onclick="executarBusca(${paginaAtualGlobal + 1})">Avançar →</button>` : ''}
+                    </div>
+                `;
+                container.appendChild(paginacaoDiv);
+            }
+
+            document.getElementById('listaCompletaContainer').style.display = 'block';
+        }
+
+        function selecionarPacienteCache(index) {
+            pacienteAtual = listaPacientesCache[index];
+            preencherPainelUnico(pacienteAtual);
+            document.getElementById('listaCompletaContainer').style.display = 'none';
+            document.getElementById('resultsPanel').style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function limparErrosModal() {
+            document.getElementById('msgErroModal').style.display = 'none';
+            const campos = document.querySelectorAll('#modalPaciente input, #modalPaciente select');
+            campos.forEach(c => c.classList.remove('campo-erro'));
+        }
+
+        function redefinirEstadoCamposModal(bloquearGerais) {
+            const camposParaBloquear = ['nome', 'numero_prontuario', 'cpf', 'cartao_sus', 'data_nascimento', 'sexo', 'nome_mae', 'unidade_referencia_id'];
+            camposParaBloquear.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (bloquearGerais) {
+                        el.setAttribute('readOnly', 'true');
+                        if (el.tagName === 'SELECT') el.setAttribute('disabled', 'true');
+                        el.style.backgroundColor = '#f3f4f6';
+                    } else {
+                        el.removeAttribute('readOnly');
+                        el.removeAttribute('disabled');
+                        el.style.backgroundColor = '#ffffff';
+                    }
+                }
+            });
+        }
+
+        function abrirModalNovo() {
+            if (PERFIL_USUARIO === 'NIVEL_III') return;
+
+            limparErrosModal();
+            redefinirEstadoCamposModal(false);
+
+            document.getElementById('modalTitulo').innerText = 'Cadastrar Novo Paciente';
+            document.getElementById('paciente_id').value = '';
+            document.getElementById('numero_prontuario').value = '';
+            document.getElementById('nome').value = '';
+            document.getElementById('cpf').value = '';
+            document.getElementById('cartao_sus').value = '';
+            document.getElementById('data_nascimento').value = '';
+            document.getElementById('sexo').value = '';
+            document.getElementById('nome_mae').value = '';
+            document.getElementById('unidade_referencia_id').value = '';
+            document.getElementById('telefone_principal').value = '';
+            document.getElementById('telefone_recado').value = '';
+
+            document.getElementById('modalPaciente').style.display = 'flex';
+        }
+
+        function abrirModalEdicao() {
+            if (!pacienteAtual) return;
+            limparErrosModal();
+
+            const eNivel3 = (PERFIL_USUARIO === 'NIVEL_III');
+            redefinirEstadoCamposModal(eNivel3);
+
+            document.getElementById('modalTitulo').innerText = eNivel3 ? 'Atualizar Telefones de Contato' : 'Editar Cadastro do Paciente';
+            document.getElementById('paciente_id').value = pacienteAtual.id;
+            document.getElementById('numero_prontuario').value = pacienteAtual.numero_prontuario !== 'Não informado' ? pacienteAtual.numero_prontuario : '';
+            document.getElementById('nome').value = pacienteAtual.nome;
+            document.getElementById('cpf').value = pacienteAtual.cpf_formatado || pacienteAtual.cpf || '';
+            document.getElementById('cartao_sus').value = pacienteAtual.cartao_sus_formatado || pacienteAtual.cartao_sus || '';
+            document.getElementById('data_nascimento').value = pacienteAtual.data_nascimento || '';
+            document.getElementById('sexo').value = pacienteAtual.sexo || '';
+            document.getElementById('nome_mae').value = pacienteAtual.nome_mae || '';
+            document.getElementById('unidade_referencia_id').value = pacienteAtual.unidade_referencia_id || '';
+            document.getElementById('telefone_principal').value = pacienteAtual.telefone_principal || '';
+            document.getElementById('telefone_recado').value = pacienteAtual.telefone_recado || '';
+
+            document.getElementById('modalPaciente').style.display = 'flex';
+        }
+
+        function abrirModalListaEspera() {
+            if (!pacienteAtual || PERFIL_USUARIO === 'NIVEL_III') return;
+            
+            document.getElementById('le_usuario_id').value = pacienteAtual.id;
+            document.getElementById('le_paciente_nome').value = pacienteAtual.nome;
+            document.getElementById('avisoDuplicidadeFila').style.display = 'none';
+            document.getElementById('btnSalvarFila').disabled = false;
+            document.getElementById('btnSalvarFila').style.opacity = '1';
+
+            const idadePaciente = calcularIdadeAnos(pacienteAtual.data_nascimento);
+            const selectModalidade = document.getElementById('modalidade_atendimento');
+            const avisoEtaria = document.getElementById('avisoFaixaEtaria');
+            
+            selectModalidade.innerHTML = '<option value="">Selecione a modalidade...</option>';
+            let permitidasCount = 0;
+
+            cbosCadastrados.forEach(cbo => {
+                let compativel = true;
+                const min = cbo.idade_minima;
+                const max = cbo.idade_maxima;
+
+                if (idadePaciente !== null) {
+                    if (min !== null && idadePaciente < min) compativel = false;
+                    if (max !== null && idadePaciente > max) compativel = false;
+                }
+
+                if (compativel) {
+                    const opt = document.createElement('option');
+                    opt.value = cbo.ocupacao;
+                    
+                    let rotuloFaixa = 'Livre / Geral';
+                    if (min !== null && max !== null) rotuloFaixa = `${min} a ${max} anos`;
+                    else if (min !== null) rotuloFaixa = `A partir de ${min} anos`;
+                    else if (max !== null) rotuloFaixa = `Até ${max} anos`;
+
+                    opt.textContent = `${cbo.ocupacao} (${rotuloFaixa})`;
+                    selectModalidade.appendChild(opt);
+                    permitidasCount++;
+                }
+            });
+
+            if (permitidasCount === 0) {
+                const opt = document.createElement('option');
+                opt.value = "";
+                opt.textContent = "Nenhuma modalidade compatível com a idade do paciente.";
+                selectModalidade.appendChild(opt);
+            }
+
+            avisoEtaria.innerText = `Paciente com ${idadePaciente !== null ? idadePaciente + ' anos' : 'idade não informada'}. Exibindo apenas especialidades compatíveis.`;
+            document.getElementById('modalListaEspera').style.display = 'flex';
+
+            fetch(`/api/paciente/${pacienteAtual.id}/historico`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.sucesso) {
+                        historicoPacienteCache = data.historico;
+                    }
+                })
+                .catch(err => console.error('Erro ao checar histórico:', err));
+        }
+
+        function verificarDuplicidadeModalidade(modalidadeSelecionada) {
+            const aviso = document.getElementById('avisoDuplicidadeFila');
+            const textoEsp = document.getElementById('textoEspecialidadeAtiva');
+            const btnSalvar = document.getElementById('btnSalvarFila');
+
+            if (!modalidadeSelecionada) {
+                aviso.style.display = 'none';
+                btnSalvar.disabled = false;
+                btnSalvar.style.opacity = '1';
+                return;
+            }
+
+            const itemAtivo = historicoPacienteCache.find(h => h.especialidade === modalidadeSelecionada && h.status === 'Em andamento');
+
+            if (itemAtivo) {
+                textoEsp.innerText = modalidadeSelecionada;
+                aviso.style.display = 'block';
+                btnSalvar.disabled = true;
+                btnSalvar.style.opacity = '0.5';
+            } else {
+                aviso.style.display = 'none';
+                btnSalvar.disabled = false;
+                btnSalvar.style.opacity = '1';
+            }
+        }
+
+        function validarInsercaoFila(e) {
+            const modalidade = document.getElementById('modalidade_atendimento').value;
+            const itemAtivo = historicoPacienteCache.find(h => h.especialidade === modalidade && h.status === 'Em andamento');
+            if (itemAtivo) {
+                alert('Operação bloqueada: O paciente já possui solicitação ativa para esta modalidade.');
+                e.preventDefault();
+                return false;
+            }
+            return true;
+        }
+
+        // --- FUNÇÕES DE FILTRAGEM ESTILO EXCEL NO HISTÓRICO ---
+        function toggleMenuFiltro(event, menuId) {
+            event.stopPropagation();
+            fecharTodosMenusFiltro();
+            const menu = document.getElementById(menuId);
+            if (menu) {
+                menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+            }
+        }
+
+        function fecharTodosMenusFiltro() {
+            document.querySelectorAll('[id^="menuFiltro"]').forEach(m => m.style.display = 'none');
+        }
+
+        window.addEventListener('click', function() {
+            fecharTodosMenusFiltro();
+        });
+
+        function limparFiltrosHistorico() {
+            filtroEspecialidadeAtual = '';
+            filtroStatusAtual = '';
+            document.getElementById('filtroEspecAtivo').innerText = '';
+            document.getElementById('filtroStatusAtivo').innerText = '';
+            renderizarTabelaHistorico(dadosHistoricoBrutos);
+        }
+
+        function filtrarTabelaHistorico(tipo, valor) {
+            if (tipo === 'especialidade') {
+                filtroEspecialidadeAtual = valor;
+                document.getElementById('filtroEspecAtivo').innerText = valor ? `(Filtro)` : '';
+            } else if (tipo === 'status') {
+                filtroStatusAtual = valor;
+                document.getElementById('filtroStatusAtivo').innerText = valor ? `(Filtro)` : '';
+            }
+
+            const dadosFiltrados = dadosHistoricoBrutos.filter(item => {
+                const matchEspec = !filtroEspecialidadeAtual || item.especialidade === filtroEspecialidadeAtual;
+                const matchStatus = !filtroStatusAtual || item.status === filtroStatusAtual;
+                return matchEspec && matchStatus;
+            });
+
+            renderizarTabelaHistorico(dadosFiltrados);
+            fecharTodosMenusFiltro();
+        }
+
+        function popularMenusFiltro(dados) {
+            const especialidadesUnicas = [...new Set(dados.map(d => d.especialidade))];
+            const statusUnicos = [...new Set(dados.map(d => d.status))];
+
+            const containerEspec = document.getElementById('opcoesFiltroEspec');
+            const containerStatus = document.getElementById('opcoesFiltroStatus');
+
+            containerEspec.innerHTML = '';
+            containerStatus.innerHTML = '';
+
+            especialidadesUnicas.forEach(esp => {
+                const div = document.createElement('div');
+                div.style.cssText = "padding: 6px 10px; font-size: 12px; cursor: pointer; border-radius: 4px; color: #374151;";
+                div.onmouseover = () => div.style.background = '#f3f4f6';
+                div.onmouseout = () => div.style.background = 'transparent';
+                div.innerText = esp;
+                div.onclick = (e) => { e.stopPropagation(); filtrarTabelaHistorico('especialidade', esp); };
+                containerEspec.appendChild(div);
+            });
+
+            statusUnicos.forEach(st => {
+                const div = document.createElement('div');
+                div.style.cssText = "padding: 6px 10px; font-size: 12px; cursor: pointer; border-radius: 4px; color: #374151;";
+                div.onmouseover = () => div.style.background = '#f3f4f6';
+                div.onmouseout = () => div.style.background = 'transparent';
+                div.innerText = st;
+                div.onclick = (e) => { e.stopPropagation(); filtrarTabelaHistorico('status', st); };
+                containerStatus.appendChild(div);
+            });
+        }
+
+        function renderizarTabelaHistorico(lista) {
+            const tbody = document.getElementById('tabelaHistoricoCorpo');
+            tbody.innerHTML = '';
+
+            if (lista.length > 0) {
+                lista.forEach(item => {
+                    let badgeStatus = '<span style="background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;">Em andamento</span>';
+                    if (item.status === 'Concluída') badgeStatus = '<span style="background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;">Concluída</span>';
+                    if (item.status === 'Cancelada') badgeStatus = '<span style="background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;">Cancelada</span>';
+
+                    let badgeAssiduidade = '-';
+                    if (item.status === 'Em andamento') {
+                        if (item.assiduo) {
+                            badgeAssiduidade = `<span style="color: #059669; font-weight: 600;">✔ Assíduo (Dentro de ${item.meses_parametro}m)</span>`;
+                        } else {
+                            badgeAssiduidade = `<span style="color: #dc2626; font-weight: 600;">⚠ Não assíduo (> ${item.meses_parametro}m)</span>`;
+                        }
+                    }
+
+                    const tr = document.createElement('tr');
+                    tr.style.borderBottom = '1px solid #e5e7eb';
+                    tr.innerHTML = `
+                        <td style="padding: 12px; font-weight: 600; color: #1f2937;">${item.especialidade}</td>
+                        <td style="padding: 12px;">${badgeStatus}</td>
+                        <td style="padding: 12px; color: #4b5563;">${formatarDataBR(item.data_inicio)}</td>
+                        <td style="padding: 12px;">${badgeAssiduidade}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="4" style="padding: 16px; text-align: center; color: #6b7280;">Nenhum registro encontrado com o filtro aplicado.</td></tr>';
+            }
+        }
+
+        function abrirModalHistorico() {
+            if (!pacienteAtual) return;
+            document.getElementById('histPacienteNome').innerText = `Paciente: ${pacienteAtual.nome}`;
+            document.getElementById('modalHistorico').style.display = 'flex';
+            
+            limparFiltrosHistorico();
+
+            fetch(`/api/paciente/${pacienteAtual.id}/historico`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.sucesso && data.historico.length > 0) {
+                        dadosHistoricoBrutos = data.historico;
+                        historicoPacienteCache = data.historico;
+                        popularMenusFiltro(dadosHistoricoBrutos);
+                        renderizarTabelaHistorico(dadosHistoricoBrutos);
+                    } else {
+                        dadosHistoricoBrutos = [];
+                        document.getElementById('tabelaHistoricoCorpo').innerHTML = '<tr><td colspan="4" style="padding: 16px; text-align: center; color: #6b7280;">Nenhum registro de atendimento na fila encontrado para este paciente.</td></tr>';
+                    }
+                })
+                .catch(err => {
+                    console.error('Erro ao buscar histórico:', err);
+                });
+        }
+
+        function fecharModal() { document.getElementById('modalPaciente').style.display = 'none'; }
+        function fecharModalLista() { document.getElementById('modalListaEspera').style.display = 'none'; }
+        function fecharModalHistorico() { document.getElementById('modalHistorico').style.display = 'none'; }
+
+        function validarFormulario(e) {
+            limparErrosModal();
+            let possuiErro = false;
+
+            const camposObrigatorios = [
+                'nome', 'numero_prontuario', 'cpf', 'cartao_sus', 'data_nascimento', 
+                'sexo', 'nome_mae', 'unidade_referencia_id', 
+                'telefone_principal', 'telefone_recado'
+            ];
+
+            camposObrigatorios.forEach(id => {
+                const el = document.getElementById(id);
+                if (el && !el.value.trim()) {
+                    el.classList.add('campo-erro');
+                    possuiErro = true;
+                }
+            });
+
+            if (possuiErro) {
+                document.getElementById('msgErroModal').style.display = 'block';
+                return false;
+            }
+            return true;
+        }
+
+        function mascaraCPF(i) {
+            let v = i.value.replace(/\D/g, "");
+            if (v.length > 11) v = v.substring(0, 11);
+            v = v.replace(/(\d{3})(\d)/, "$1.$2");
+            v = v.replace(/(\d{3})(\d)/, "$1.$2");
+            v = v.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+            i.value = v;
+        }
+
+        function mascaraSUS(i) {
+            let v = i.value.replace(/\D/g, "");
+            if (v.length > 15) v = v.substring(0, 15);
+            v = v.replace(/(\d{3})(\d)/, "$1 $2");
+            v = v.replace(/(\d{4})(\d)/, "$1 $2");
+            v = v.replace(/(\d{4})(\d{1,4})$/, "$1 $2");
+            i.value = v;
+        }
+
+        function mascaraTelDinamica(i) {
+            let v = i.value.replace(/\D/g, "");
+            if (v.length > 11) v = v.substring(0, 11);
+
+            if (v.length <= 10) {
+                v = v.replace(/^(\d{2})(\d)/g, "($1) $2");
+                v = v.replace(/(\d{4})(\d)/, "$1-$2");
+            } else {
+                v = v.replace(/^(\d{2})(\d)/g, "($1) $2");
+                v = v.replace(/(\d{5})(\d)/, "$1-$2");
+            }
+            i.value = v;
+        }
+    </script>
+</body>
+</html>

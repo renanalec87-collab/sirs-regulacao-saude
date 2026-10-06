@@ -1,0 +1,223 @@
+{% set perfil = session.get('perfil') %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avisos e Campanhas de Login — CAPS II</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; }
+        
+        .topbar { background-color: #692A85; color: white; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .topbar .title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
+        .topbar .center-title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .topbar .user-info { font-size: 13px; display: flex; align-items: center; gap: 12px; }
+        .topbar .user-info span { background: rgba(255,255,255,0.15); padding: 4px 10px; border-radius: 12px; font-weight: 500; }
+        .btn-logout { background-color: #dc2626; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; transition: background 0.2s; }
+        .btn-logout:hover { background-color: #b91c1c; }
+
+        .navbar { background: white; border-bottom: 1px solid #e5e7eb; padding: 0 24px; display: flex; gap: 20px; overflow-x: auto; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .navbar a { text-decoration: none; color: #4b5563; font-size: 14px; font-weight: 600; padding: 14px 0; border-bottom: 3px solid transparent; transition: all 0.2s; display: inline-block; flex-shrink: 0; }
+        .navbar a:hover, .navbar a.active { color: #692A85; border-bottom-color: #692A85; }
+
+        .container { flex: 1; padding: 24px; max-width: 1200px; margin: 0 auto; width: 100%; }
+        .alert { padding: 12px 16px; border-radius: 6px; font-size: 14px; margin-bottom: 20px; }
+        .alert-success { background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .alert-danger { background-color: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        
+        .card { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-top: 4px solid #692A85; }
+        .header-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header-title { font-size: 20px; color: #1f2937; font-weight: 700; }
+        .header-sub { font-size: 14px; color: #6b7280; margin-top: 4px; }
+        .btn-novo { background-color: #059669; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }
+        .btn-novo:hover { background-color: #047857; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
+        th, td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
+        th { background: #f9fafb; color: #374151; font-weight: 600; }
+        .badge-ativo { background: #d1fae5; color: #065f46; padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .badge-inativo { background: #ffeeef; color: #991b1b; padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .btn-edit { background: #d97706; color: white; border: none; padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .btn-edit:hover { background: #b45309; }
+        
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; width: 100%; max-width: 600px; border-radius: 8px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 16px; }
+        .btn-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #6b7280; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #692A85; box-shadow: 0 0 0 3px rgba(105, 42, 133, 0.1); }
+        .form-group textarea { resize: vertical; min-height: 90px; }
+        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 14px; }
+        .btn-cancel { background: #e5e7eb; color: #374151; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .btn-save { background: #692A85; color: white; border: none; padding: 8px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        
+        .footer { text-align: center; padding: 14px 0; font-size: 12px; color: #6b7280; background-color: #e5e7eb; margin-top: auto; border-top: 1px solid #d1d5db; }
+    </style>
+</head>
+<body>
+    <div class="topbar">
+        <div class="title">{{ session.get('estabelecimento', 'CAPS II — São Roque') }}</div>
+        <div class="center-title">Gestão de Especialidades</div>
+        <div class="user-info">
+            Olá, <strong>{{ session.nome }}</strong>
+            {% if perfil %}
+                <span>{{ perfil }}</span>
+            {% endif %}
+            <a href="/logout" class="btn-logout">Sair</a>
+        </div>
+    </div>
+
+    <div class="navbar">
+        <a href="/dashboard">Consulta / Início</a>
+        <a href="/lista-espera">Lista de Espera & Regulação</a>
+        <a href="/guias-fluxo">Guias & Fluxos de Encaminhamento</a>
+        {% if perfil == 'NIVEL_I' %}
+            <a href="/admin/profissionais">Profissionais</a>
+            <a href="/admin/estabelecimentos">Unidades de Saúde</a>
+            <a href="/relatorios">Relatórios</a>
+            <a href="/admin/configuracoes" class="active">Configurações</a>
+        {% endif %}
+    </div>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <div class="card">
+            <div class="header-flex">
+                <div>
+                    <div class="header-title">Gerenciamento de Avisos e Campanhas de Login</div>
+                    <div class="header-sub">Cadastre informativos ou campanhas que aparecerão no painel lateral da tela de login por período.</div>
+                </div>
+                <button type="button" class="btn-novo" onclick="abrirModalNovo()">+ Novo Aviso / Campanha</button>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Título da Campanha</th>
+                        <th style="width: 130px;">Início</th>
+                        <th style="width: 130px;">Término</th>
+                        <th style="width: 120px;">Status</th>
+                        <th style="width: 100px; text-align: right;">Ação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if campanhas %}
+                        {% for c in campanhas %}
+                        <tr>
+                            <td style="font-weight: 600; color: #1f2937; vertical-align: middle;">{{ c.titulo }}</td>
+                            <td style="vertical-align: middle;">{{ c.data_inicio }}</td>
+                            <td style="vertical-align: middle;">{{ c.data_fim }}</td>
+                            <td style="vertical-align: middle;">
+                                <span class="{% if c.ativo == 1 %}badge-ativo{% else %}badge-inativo{% endif %}">
+                                    {{ 'Ativo' if c.ativo == 1 else 'Inativo' }}
+                                </span>
+                            </td>
+                            <td style="text-align: right; vertical-align: middle;">
+                                <button type="button" class="btn-edit" onclick="abrirModalEditar('{{ c.id }}', '{{ c.titulo }}', '{{ c.data_inicio }}', '{{ c.data_fim }}', '{{ c.ativo }}', `{{ c.descricao_texto | default('', true) }}`)">Editar</button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: #6b7280; padding: 24px;">Nenhuma campanha ou aviso cadastrado no momento.</td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- MODAL DE CADASTRO / EDIÇÃO -->
+    <div id="modalCampanha" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitulo">Nova Campanha ou Aviso</h3>
+                <button type="button" class="btn-close" onclick="fecharModal()">&times;</button>
+            </div>
+            <form method="POST" action="/admin/configuracoes/campanhas/salvar" enctype="multipart/form-data">
+                <input type="hidden" id="campanha_id" name="id">
+                
+                <div class="form-group">
+                    <label>Título da Campanha / Aviso *</label>
+                    <input type="text" id="titulo" name="titulo" placeholder="Ex: Outubro Rosa ou Informativo Geral" required>
+                </div>
+                
+                <div style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Data de Início *</label>
+                        <input type="date" id="data_inicio" name="data_inicio" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Data de Término *</label>
+                        <input type="date" id="data_fim" name="data_fim" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Arquivo de Imagem ou Informativo (PDF / PNG / JPG)</label>
+                    <input type="file" name="arquivo" accept=".png, .jpg, .jpeg, .pdf">
+                    <small style="color: #6b7280; font-size: 11px;">Será exibido no painel lateral da tela de login durante o período.</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Texto Informativo Opcional (Exibido ao lado da imagem)</label>
+                    <textarea id="descricao_texto" name="descricao_texto" placeholder="Digite um texto descritivo opcional que aparecerá ao lado da imagem no carrossel... Se deixar em branco, apenas a imagem será exibida em destaque."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Status</label>
+                    <select id="ativo" name="ativo">
+                        <option value="1">Ativo</option>
+                        <option value="0">Inativo</option>
+                    </select>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+                    <button type="submit" class="btn-save">Salvar Campanha</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="footer">Intranet CAPS II — São Roque &copy; 2026.</div>
+
+    <script>
+        function abrirModalNovo() {
+            document.getElementById('modalTitulo').innerText = 'Cadastrar Nova Campanha / Aviso';
+            document.getElementById('campanha_id').value = '';
+            document.getElementById('titulo').value = '';
+            document.getElementById('data_inicio').value = '';
+            document.getElementById('data_fim').value = '';
+            document.getElementById('descricao_texto').value = '';
+            document.getElementById('ativo').value = '1';
+            document.getElementById('modalCampanha').style.display = 'flex';
+        }
+
+        function abrirModalEditar(id, titulo, inicio, fim, ativo, descricao) {
+            document.getElementById('modalTitulo').innerText = 'Editar Campanha / Aviso';
+            document.getElementById('campanha_id').value = id;
+            document.getElementById('titulo').value = titulo;
+            document.getElementById('data_inicio').value = inicio;
+            document.getElementById('data_fim').value = fim;
+            document.getElementById('ativo').value = ativo;
+            document.getElementById('descricao_texto').value = descricao;
+            document.getElementById('modalCampanha').style.display = 'flex';
+        }
+
+        function fecharModal() {
+            document.getElementById('modalCampanha').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
