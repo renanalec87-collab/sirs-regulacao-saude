@@ -57,13 +57,27 @@
         .status-cancelado { background-color: #fee2e2; color: #991b1b; }
         .status-ajuste-faixa { background-color: #fef3c7; color: #b45309; border: 1px dashed #f59e0b; }
 
-        .badge-posicao { background-color: #f3e8ff; color: #692A85; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; }
-        .badge-alerta-faixa { background-color: #f97316; color: white; padding: 5px 10px; border-radius: 20px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; display: inline-block; box-shadow: 0 2px 4px rgba(249, 115, 22, 0.3); }
+        /* ALINHAMENTO CONSISTENTE DA COLUNA DE POSIÇÃO */
+        .badge-posicao { background-color: #f3e8ff; color: #692A85; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; display: inline-block; text-align: center; min-width: 34px; }
+        .posicao-container { display: inline-block; width: 38px; text-align: center; vertical-align: middle; flex-shrink: 0; }
+        
+        .badge-alerta-faixa { 
+            background-color: #f97316 !important; 
+            color: white !important; 
+            padding: 8px 14px !important; 
+            border-radius: 20px !important; 
+            font-size: 11.5px !important; 
+            font-weight: 700 !important; 
+            text-transform: uppercase !important; 
+            display: inline-block !important; 
+            white-space: nowrap !important; 
+            box-shadow: 0 2px 4px rgba(249, 115, 22, 0.3); 
+        }
 
         .btn-atualizar { background-color: #2563eb; color: white; border: none; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s; text-decoration: none; display: inline-block; }
         .btn-atualizar:hover { background-color: #1d4ed8; }
 
-        .btn-detalhes { background: none; border: none; cursor: pointer; font-size: 16px; margin-left: 6px; vertical-align: middle; transition: transform 0.2s; }
+        .btn-detalhes { background: none; border: none; cursor: pointer; font-size: 16px; margin-left: 6px; vertical-align: middle; transition: transform 0.2s; display: inline-block; }
         .btn-detalhes:hover { transform: scale(1.2); }
 
         .empty-state { text-align: center; padding: 40px; color: #6b7280; font-size: 14px; }
@@ -200,8 +214,8 @@
                             {% for item in atendimentos %}
                             <tr class="{% if item.alerta_faixa_etaria %}alerta-faixa-etaria{% endif %}">
                                 <td style="white-space: nowrap; font-weight: 500;">
-                                    <div style="display: inline-flex; align-items: center; gap: 6px;">
-                                        <span style="display: inline-block; text-align: center;">
+                                    <div style="display: inline-flex; align-items: center; gap: 8px;">
+                                        <span class="posicao-container">
                                             {% if item.posicao_fila and item.status == 'Aguardando' and not item.alerta_faixa_etaria %}
                                                 <span class="badge-posicao" title="Posição cronológica na fila">{{ item.posicao_fila }}º</span>
                                             {% else %}
@@ -246,7 +260,6 @@
                                         <span style="color: #9ca3af;">Não informado</span>
                                     {% endif %}
                                 </td>
-                                <!-- Coluna de Status com Selo Laranja Vivo e Placa Proporcional -->
                                 <td>
                                     {% if item.alerta_faixa_etaria %}
                                         <span class="badge-alerta-faixa" title="Paciente mudou de faixa etária! Requer triagem.">⚠️ FAIXA ETÁRIA</span>

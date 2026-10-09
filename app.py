@@ -1656,7 +1656,7 @@ def ver_lista_espera():
     elif status_filtro == 'todos':
       pass
     elif status_filtro == 'Ajuste de Faixa Etária':
-      query_base_where += " AND le.status = 'Aguardando'"
+      query_base_where += " AND le.status IN ('Aguardando', 'Em Atendimento')"
     elif status_filtro in [
         'Aguardando',
         'Em Atendimento',
@@ -1711,7 +1711,7 @@ def ver_lista_espera():
     for row in raw_atendimentos:
       item = dict(row)
 
-      # 1. Cálculo da idade e verificação de faixa etária apenas para status AGUARDANDO
+      # 1. Cálculo da idade e verificação de faixa etária para solicitações ativas (Aguardando ou Em Atendimento)
       idade = calcular_idade(item.get('paciente_data_nascimento'))
       item['idade_atual'] = idade
 
@@ -1720,7 +1720,7 @@ def ver_lista_espera():
       alerta_faixa = False
       sugestao_modalidade = None
 
-      if status_atual == 'Aguardando':
+      if status_atual in ['Aguardando', 'Em Atendimento']:
         if 'infantil' in modalidade.lower() and idade >= 10:
           alerta_faixa = True
           sugestao_modalidade = 'Psicologia Adolescente'
