@@ -46,14 +46,19 @@
         th { background: #f8fafc; color: #475569; font-weight: 600; padding: 14px 16px; border-bottom: 1px solid #e2e8f0; }
         td { padding: 14px 16px; border-bottom: 1px solid #e5e7eb; color: #1f2937; vertical-align: middle; }
         tr:hover { background-color: #fcf8ff; }
+        
+        tr.alerta-faixa-etaria { background-color: #fffbeb !important; border-left: 4px solid #f59e0b; }
+        tr.alerta-faixa-etaria:hover { background-color: #fef3c7 !important; }
 
         .badge-status { padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; text-transform: uppercase; display: inline-block; }
         .status-aguardando { background-color: #fef3c7; color: #92400e; }
         .status-em-atendimento { background-color: #dbeafe; color: #1e40af; }
         .status-atendido { background-color: #d1fae5; color: #065f46; }
         .status-cancelado { background-color: #fee2e2; color: #991b1b; }
+        .status-ajuste-faixa { background-color: #fef3c7; color: #b45309; border: 1px dashed #f59e0b; }
 
         .badge-posicao { background-color: #f3e8ff; color: #692A85; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+        .badge-alerta-faixa { background-color: #f97316; color: white; padding: 5px 10px; border-radius: 20px; font-size: 10.5px; font-weight: 700; text-transform: uppercase; display: inline-block; box-shadow: 0 2px 4px rgba(249, 115, 22, 0.3); }
 
         .btn-atualizar { background-color: #2563eb; color: white; border: none; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s; text-decoration: none; display: inline-block; }
         .btn-atualizar:hover { background-color: #1d4ed8; }
@@ -133,6 +138,7 @@
                             <option value="todos" {% if request.args.get('status_filtro') == 'todos' %}selected{% endif %}>Todos os Status</option>
                             <option value="Aguardando" {% if request.args.get('status_filtro') == 'Aguardando' %}selected{% endif %}>Apenas Aguardando</option>
                             <option value="Em Atendimento" {% if request.args.get('status_filtro') == 'Em Atendimento' %}selected{% endif %}>Apenas Em Atendimento</option>
+                            <option value="Ajuste de Faixa Etária" {% if request.args.get('status_filtro') == 'Ajuste de Faixa Etária' %}selected{% endif %}>Apenas Ajuste de Faixa Etária</option>
                             <option value="Atendido / Finalizado" {% if request.args.get('status_filtro') == 'Atendido / Finalizado' %}selected{% endif %}>Apenas Finalizados</option>
                             <option value="Cancelado / Desistência" {% if request.args.get('status_filtro') == 'Cancelado / Desistência' %}selected{% endif %}>Apenas Cancelados</option>
                         </select>
@@ -192,12 +198,14 @@
                         </thead>
                         <tbody>
                             {% for item in atendimentos %}
-                            <tr>
+                            <tr class="{% if item.alerta_faixa_etaria %}alerta-faixa-etaria{% endif %}">
                                 <td style="white-space: nowrap; font-weight: 500;">
                                     <div style="display: inline-flex; align-items: center; gap: 6px;">
-                                        <span style="display: inline-block; width: 38px; text-align: center;">
-                                            {% if item.posicao_fila and item.status == 'Aguardando' %}
+                                        <span style="display: inline-block; text-align: center;">
+                                            {% if item.posicao_fila and item.status == 'Aguardando' and not item.alerta_faixa_etaria %}
                                                 <span class="badge-posicao" title="Posição cronológica na fila">{{ item.posicao_fila }}º</span>
+                                            {% else %}
+                                                <span style="font-size: 11px; color: #9ca3af;">—</span>
                                             {% endif %}
                                         </span>
                                         
@@ -223,7 +231,8 @@
                                 <td>
                                     <div style="font-weight: 700; color: #111827;">{{ item.paciente_nome }}</div>
                                     <div style="font-size: 12px; color: #692A85; font-weight: 600; margin-top: 2px;">
-                                        {{ item.paciente_cpf | cpf if item.paciente_cpf else 'CPF não informado' }}
+                                        {{ item.paciente_cpf | cpf if item.paciente_cpf else 'CPF não informado' }} 
+                                        <span style="color: #4b5563; font-weight: normal;">({{ item.idade_atual }} anos)</span>
                                     </div>
                                 </td>
                                 <td><strong>{{ item.modalidade_atendimento }}</strong></td>
@@ -237,11 +246,16 @@
                                         <span style="color: #9ca3af;">Não informado</span>
                                     {% endif %}
                                 </td>
+                                <!-- Coluna de Status com Selo Laranja Vivo e Placa Proporcional -->
                                 <td>
-                                    {% set st = item.status %}
-                                    <span class="badge-status {% if st == 'Aguardando' %}status-aguardando{% elif st == 'Em Atendimento' %}status-em-atendimento{% elif st == 'Atendido / Finalizado' %}status-atendido{% else %}status-cancelado{% endif %}">
-                                        {{ st }}
-                                    </span>
+                                    {% if item.alerta_faixa_etaria %}
+                                        <span class="badge-alerta-faixa" title="Paciente mudou de faixa etária! Requer triagem.">⚠️ FAIXA ETÁRIA</span>
+                                    {% else %}
+                                        {% set st_exibicao = item.status_exibicao %}
+                                        <span class="badge-status {% if st_exibicao == 'Aguardando' %}status-aguardando{% elif st_exibicao == 'Em Atendimento' %}status-em-atendimento{% elif st_exibicao == 'Atendido / Finalizado' %}status-atendido{% else %}status-cancelado{% endif %}">
+                                            {{ st_exibicao }}
+                                        </span>
+                                    {% endif %}
                                 </td>
                                 <td>
                                     <span class="tempo-espera" data-data="{{ item.data_entrada }}" style="font-weight: 600; color: #4b5563;">Calculando...</span>
@@ -308,6 +322,7 @@
                     <select name="status" id="modalStatus" class="search-select" required>
                         <option value="Aguardando">Aguardando</option>
                         <option value="Em Atendimento">Em Atendimento</option>
+                        <option value="Ajuste de Faixa Etária">Ajuste de Faixa Etária</option>
                         <option value="Atendido / Finalizado">Atendido / Finalizado</option>
                         <option value="Cancelado / Desistência">Cancelado / Desistência</option>
                     </select>

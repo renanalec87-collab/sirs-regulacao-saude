@@ -82,9 +82,7 @@ def garantir_colunas_auditoria():
   if 'created_at' not in cols_estab:
     cursor.execute('ALTER TABLE estabelecimentos ADD COLUMN created_at TIMESTAMP')
   if 'updated_at' not in cols_estab:
-    cursor.execute(
-        'ALTER TABLE estabelecimentos ADD COLUMN updated_at TIMESTAMP'
-    )
+    cursor.execute('ALTER TABLE estabelecimentos ADD COLUMN updated_at TIMESTAMP')
 
   conn.commit()
   conn.close()
@@ -92,6 +90,24 @@ def garantir_colunas_auditoria():
 
 with app.app_context():
   garantir_colunas_auditoria()
+
+
+# --- FUNÇÃO AUXILIAR DE CÁLCULO DE IDADE ---
+def calcular_idade(data_nascimento_str):
+  if not data_nascimento_str:
+    return 0
+  try:
+    hoje = datetime.now().date()
+    nasc = datetime.strptime(
+        data_nascimento_str.split('T')[0], '%Y-%m-%d'
+    ).date()
+    return (
+        hoje.year
+        - nasc.year
+        - ((hoje.month, hoje.day) < (nasc.month, nasc.day))
+    )
+  except Exception:
+    return 0
 
 
 # --- FILTROS DE FORMATAÇÃO DE DOCUMENTOS (JINJA2) ---
@@ -567,7 +583,7 @@ def inserir_lista_espera():
     cursor.execute(
         """
             SELECT id, data_entrada FROM lista_espera 
-            WHERE usuario_id = ? AND modalidade_atendimento = ? AND status IN ('Aguardando', 'Em Atendimento')
+            WHERE usuario_id = ? AND modalidade_atendimento = ? AND status IN ('Aguardando', 'Em Atendimento', 'Ajuste de Faixa Etária')
         """,
         (usuario_id, modalidade),
     )
@@ -972,6 +988,7 @@ def relatorios():
             SUM(CASE WHEN le.status = 'Em Atendimento' THEN 1 ELSE 0 END) AS em_atendimento,
             SUM(CASE WHEN le.status = 'Atendido / Finalizado' THEN 1 ELSE 0 END) AS atendido,
             SUM(CASE WHEN le.status = 'Cancelado / Desistência' THEN 1 ELSE 0 END) AS cancelado,
+            SUM(CASE WHEN le.status = 'Ajuste de Faixa Etária' THEN 1 ELSE 0 END) AS ajuste_faixa,
             COUNT(le.id) AS total
         FROM estabelecimentos e
         LEFT JOIN lista_espera le ON le.unidade_solicitante_id = e.id
@@ -1055,77 +1072,74 @@ def relatorios():
       modalidades=modalidades,
   )
 
-# Rota Mapa
+
 @app.route('/api/relatorios/mapa', methods=['GET'])
 @login_required
 @nivel_i_required
 def api_relatorios_mapa():
-    modalidade = request.args.get('modalidade', 'todos')
-    status = request.args.get('status', 'Aguardando')
+  modalidade = request.args.get('modalidade', 'todos')
+  status = request.args.get('status', 'Aguardando')
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    query = """
+  conn = get_db_connection()
+  cursor = conn.cursor()
+  query = """
         SELECT e.nome AS unidade, e.id AS unidade_id, COUNT(le.id) AS total
         FROM estabelecimentos e
         LEFT JOIN lista_espera le ON le.unidade_solicitante_id = e.id AND le.status = ?
     """
-    params = [status]
+  params = [status]
 
-    if modalidade != 'todos':
-        query += ' AND le.modalidade_atendimento = ?'
-        params.append(modalidade)
+  if modalidade != 'todos':
+    query += ' AND le.modalidade_atendimento = ?'
+    params.append(modalidade)
 
-    query += ' GROUP BY e.id, e.nome'
-    dados = [dict(row) for row in cursor.execute(query, params).fetchall()]
-    conn.close()
+  query += ' GROUP BY e.id, e.nome'
+  dados = [dict(row) for row in cursor.execute(query, params).fetchall()]
+  conn.close()
 
-    # Coordenadas fixas distribuídas para os bairros e unidades de São Roque - SP
-    coordenadas_fixas = {
-        '192 - RESGATE': [-23.5320, -47.1350],             # Avenida Bernardino de Lucca, Jd. Carambei
-        'CENTRAL DE REGULACAO': [-23.5320, -47.1335],      # Avenida John Kennedy, 509
-        'CANGUERA': [-23.6042, -47.1633],                  # Rua Sorocabana, 601
-        'CAPS II': [-23.5300, -47.1320],                   # Rua Alfredo Salvetti, 91
-        'CAPS II-AD': [-23.5312, -47.1350],                   # Rua Santa Isabel, 46
-        'CARMO': [-23.5360, -47.1400],                     # Bairro do Carmo
-        'CENTRAL - ESPECIALIDADES': [-23.5318, -47.1345],  # Rua Santana, 349
-        'CENTRAL - IRIS BARIONI': [-23.5340, -47.1360],    # Rua Prof. Fernando de Lima, 70
-        'CENTRAL DE REGULACAO': [-23.5320, -47.1335],      # Avenida John Kennedy, 509
-        'CENTRO DE SAUDE II': [-23.5320, -47.1335],        # Avenida John Kennedy, 509
-        'DEPARTAMENTO DE SAUDE': [-23.5505, -47.1260],     # Rua São Paulo, 966 (Taboão)
-        'FARMACIA CENTRAL': [-23.5300, -47.1320],          # Rua Alfredo Salvetti, 91
-        'GOIANA': [-23.5450, -47.1050],                    # Rua Martin Afonso de Sousa, Paisagem Colonial
-        'GUACU': [-23.5180, -47.1250],                     # Avenida Bernardino de Lucca, Jd. Carambei
-        'HOSPITAL SANTA CASA': [-23.5295, -47.1415],       # Rua Santa Isabel, 1586
-        'MAYLASKY': [-23.5561, -47.0900],                  # Rua Antônio Sartori, Mailasque
-        'MAYLASKY-ESPECIALIDADES': [-23.5570, -47.0905],   # Rua Benedicta dos Santos Caparelli, Mailasque
-        'SABOO': [-23.4747, -47.1626],                     # Estrada do Saboó
-        'SAO JOAO NOVO': [-23.5395, -47.2140],             # Rua José Benedito Rodrigues, São João Novo
-        'SISO': [-23.5315, -47.1350],                      # Avenida Antonino Dias Bastos, 157
-        'TABOAO': [-23.5500, -47.1250],                    # Avenida São Luis, 118
-        'VILA NOVA': [-23.5240, -47.1430],                 # Rua Jaboticabal, 604
-        'VILLAGGIO EMILIA': [-23.5450, -47.1500]           # Rua das Papoulas, Vila Santa Rosália
-    }
+  coordenadas_fixas = {
+      '192 - RESGATE': [-23.5320, -47.1350],
+      'CENTRAL DE REGULACAO': [-23.5320, -47.1335],
+      'CANGUERA': [-23.6042, -47.1633],
+      'CAPS II': [-23.5300, -47.1320],
+      'CAPS II-AD': [-23.5312, -47.1350],
+      'CARMO': [-23.5360, -47.1400],
+      'CENTRAL - ESPECIALIDADES': [-23.5318, -47.1345],
+      'CENTRAL - IRIS BARIONI': [-23.5340, -47.1360],
+      'CENTRO DE SAUDE II': [-23.5320, -47.1335],
+      'DEPARTAMENTO DE SAUDE': [-23.5505, -47.1260],
+      'FARMACIA CENTRAL': [-23.5300, -47.1320],
+      'GOIANA': [-23.5450, -47.1050],
+      'GUACU': [-23.5180, -47.1250],
+      'HOSPITAL SANTA CASA': [-23.5295, -47.1415],
+      'MAYLASKY': [-23.5561, -47.0900],
+      'MAYLASKY-ESPECIALIDADES': [-23.5570, -47.0905],
+      'SABOO': [-23.4747, -47.1626],
+      'SAO JOAO NOVO': [-23.5395, -47.2140],
+      'SISO': [-23.5315, -47.1350],
+      'TABOAO': [-23.5500, -47.1250],
+      'VILA NOVA': [-23.5240, -47.1430],
+      'VILLAGGIO EMILIA': [-23.5450, -47.1500],
+  }
 
-    resultado_final = []
-    for d in dados:
-        nome_est = d['unidade'].strip().upper()
-        
-        # Procura a coordenada correspondente ou usa o centro como padrão se não encontrar
-        coords = [-23.5325, -47.1353]
-        for chave, latlng in coordenadas_fixas.items():
-            if chave in nome_est:
-                coords = latlng
-                break
+  resultado_final = []
+  for d in dados:
+    nome_est = d['unidade'].strip().upper()
+    coords = [-23.5325, -47.1353]
+    for chave, latlng in coordenadas_fixas.items():
+      if chave in nome_est:
+        coords = latlng
+        break
 
-        resultado_final.append({
-            'unidade': d['unidade'],
-            'total': d['total'],
-            'lat': coords[0],
-            'lng': coords[1]
-        })
+    resultado_final.append({
+        'unidade': d['unidade'],
+        'total': d['total'],
+        'lat': coords[0],
+        'lng': coords[1],
+    })
 
-    return jsonify({'sucesso': True, 'dados': resultado_final})
+  return jsonify({'sucesso': True, 'dados': resultado_final})
+
 
 @app.route('/admin/configuracoes')
 @login_required
@@ -1561,44 +1575,48 @@ def salvar_guia():
 
   return redirect(url_for('admin_guias'))
 
-@app.route('/admin/configuracoes/guias/excluir/<int:guia_id>', methods=['POST', 'GET'])
-@login_required
-@nivel_i_required
+
+@app.route(
+    '/admin/configuracoes/guias/excluir/<int:guia_id>', methods=['POST', 'GET']
+)
 def excluir_guia(guia_id):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute('DELETE FROM guias_anexos WHERE guia_id = ?', (guia_id,))
-        cursor.execute('DELETE FROM guias_fluxos WHERE id = ?', (guia_id,))
-        conn.commit()
-        flash('Guia e seus anexos excluídos com sucesso!', 'success')
-    except Exception as e:
-        conn.rollback()
-        flash(f'Erro ao excluir guia: {str(e)}', 'danger')
-    finally:
-        conn.close()
-    return redirect(url_for('admin_guias'))
+  conn = get_db_connection()
+  cursor = conn.cursor()
+  try:
+    cursor.execute('DELETE FROM guias_anexos WHERE guia_id = ?', (guia_id,))
+    cursor.execute('DELETE FROM guias_fluxos WHERE id = ?', (guia_id,))
+    conn.commit()
+    flash('Guia e seus anexos excluídos com sucesso!', 'success')
+  except Exception as e:
+    conn.rollback()
+    flash(f'Erro ao excluir guia: {str(e)}', 'danger')
+  finally:
+    conn.close()
+  return redirect(url_for('admin_guias'))
 
 
-@app.route('/admin/configuracoes/guias/anexo/excluir/<int:anexo_id>', methods=['GET', 'POST'])
+@app.route(
+    '/admin/configuracoes/guias/anexo/excluir/<int:anexo_id>',
+    methods=['GET', 'POST'],
+)
 @login_required
 @nivel_i_required
 def excluir_anexo_pdf(anexo_id):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute('DELETE FROM guias_anexos WHERE id = ?', (anexo_id,))
-        conn.commit()
-        flash('Arquivo PDF excluído com sucesso!', 'success')
-    except Exception as e:
-        conn.rollback()
-        flash(f'Erro ao excluir anexo PDF: {str(e)}', 'danger')
-    finally:
-        conn.close()
-    return redirect(url_for('admin_guias'))
+  conn = get_db_connection()
+  cursor = conn.cursor()
+  try:
+    cursor.execute('DELETE FROM guias_anexos WHERE id = ?', (anexo_id,))
+    conn.commit()
+    flash('Arquivo PDF excluído com sucesso!', 'success')
+  except Exception as e:
+    conn.rollback()
+    flash(f'Erro ao excluir anexo PDF: {str(e)}', 'danger')
+  finally:
+    conn.close()
+  return redirect(url_for('admin_guias'))
 
 
-# --- ROTA DE LISTA DE ESPERA COM PAGINAÇÃO (50 REGISTROS) ---
+# --- ROTA DE LISTA DE ESPERA COM PAGINAÇÃO E RADAR DE FAIXA ETÁRIA ---
 @app.route('/lista-espera')
 @login_required
 def ver_lista_espera():
@@ -1632,9 +1650,13 @@ def ver_lista_espera():
       params.append(modalidade_filtro)
 
     if status_filtro == 'ativos':
-      query_base_where += " AND le.status IN ('Aguardando', 'Em Atendimento')"
+      query_base_where += (
+          " AND le.status IN ('Aguardando', 'Em Atendimento')"
+      )
     elif status_filtro == 'todos':
       pass
+    elif status_filtro == 'Ajuste de Faixa Etária':
+      query_base_where += " AND le.status = 'Aguardando'"
     elif status_filtro in [
         'Aguardando',
         'Em Atendimento',
@@ -1651,11 +1673,6 @@ def ver_lista_espera():
     )
     cursor.execute(query_count, params)
     total_registros = cursor.fetchone()[0]
-    total_paginas = (
-        (total_registros + per_page - 1) // per_page
-        if total_registros > 0
-        else 1
-    )
 
     query_lista = (
         """
@@ -1665,6 +1682,7 @@ def ver_lista_espera():
             u.cpf AS paciente_cpf,
             u.cartao_sus AS paciente_sus,
             u.numero_prontuario AS paciente_prontuario,
+            u.data_nascimento AS paciente_data_nascimento,
             e.nome AS unidade_solicitante_nome,
             c.codigo AS cid_codigo,
             c.descricao AS cid_descricao,
@@ -1683,30 +1701,75 @@ def ver_lista_espera():
         LEFT JOIN estabelecimentos e_prof ON p_atendimento.estabelecimento_id = e_prof.id
     """
         + query_base_where
-        + ' ORDER BY le.data_entrada ASC LIMIT ? OFFSET ?'
+        + ' ORDER BY le.data_entrada ASC'
     )
 
-    params_paginados = params + [per_page, offset]
-    cursor.execute(query_lista, params_paginados)
+    cursor.execute(query_lista, params)
     raw_atendimentos = cursor.fetchall()
 
-    atendimentos = []
+    atendimentos_processados = []
     for row in raw_atendimentos:
       item = dict(row)
-      if item['status'] == 'Aguardando':
+
+      # 1. Cálculo da idade e verificação de faixa etária apenas para status AGUARDANDO
+      idade = calcular_idade(item.get('paciente_data_nascimento'))
+      item['idade_atual'] = idade
+
+      modalidade = item['modalidade_atendimento']
+      status_atual = item['status']
+      alerta_faixa = False
+      sugestao_modalidade = None
+
+      if status_atual == 'Aguardando':
+        if 'infantil' in modalidade.lower() and idade >= 10:
+          alerta_faixa = True
+          sugestao_modalidade = 'Psicologia Adolescente'
+        elif 'adolescente' in modalidade.lower() and (idade < 10 or idade >= 18):
+          alerta_faixa = True
+          sugestao_modalidade = (
+              'Psicologia Infantil' if idade < 10 else 'Psicologia Adulto'
+          )
+        elif 'adulto' in modalidade.lower() and idade < 18:
+          alerta_faixa = True
+          sugestao_modalidade = 'Psicologia Adolescente'
+
+      item['alerta_faixa_etaria'] = alerta_faixa
+      item['sugestao_modalidade'] = sugestao_modalidade
+
+      # Define o status visual exibido na tabela
+      if alerta_faixa:
+        item['status_exibicao'] = 'Ajuste de Faixa Etária'
+      else:
+        item['status_exibicao'] = status_atual
+
+      # Se o filtro específico foi "Ajuste de Faixa Etária", removemos quem não tem alerta
+      if status_filtro == 'Ajuste de Faixa Etária' and not alerta_faixa:
+        continue
+
+      # 2. Posição na fila (Pacientes com alerta param de contar na fila de espera)
+      if status_atual == 'Aguardando' and not alerta_faixa:
         cursor.execute(
             """
-            SELECT COUNT(*) + 1 FROM lista_espera 
-            WHERE modalidade_atendimento = ? 
-              AND status = 'Aguardando'
-              AND data_entrada < ?
-        """,
+                SELECT COUNT(*) + 1 FROM lista_espera 
+                WHERE modalidade_atendimento = ? 
+                  AND status = 'Aguardando'
+                  AND data_entrada < ?
+            """,
             (item['modalidade_atendimento'], item['data_entrada']),
         )
         item['posicao_fila'] = cursor.fetchone()[0]
       else:
         item['posicao_fila'] = None
-      atendimentos.append(item)
+
+      atendimentos_processados.append(item)
+
+    total_registros = len(atendimentos_processados)
+    total_paginas = (
+        (total_registros + per_page - 1) // per_page
+        if total_registros > 0
+        else 1
+    )
+    atendimentos = atendimentos_processados[offset : offset + per_page]
 
   modalidades = [
       row['modalidade_atendimento']
@@ -1740,6 +1803,7 @@ def ver_lista_espera():
       total_paginas=total_paginas,
       total_registros=total_registros,
   )
+
 
 if __name__ == '__main__':
   app.run(debug=True, host='0.0.0.0', port=5000)
