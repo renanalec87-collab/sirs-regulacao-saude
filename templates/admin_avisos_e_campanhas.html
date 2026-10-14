@@ -5,18 +5,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Avisos e Campanhas de Login — CAPS II</title>
+    <!-- Bootstrap 5 CSS para os Dropdowns e Modais do topo -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; }
         
-        .topbar { background-color: #692A85; color: white; padding: 12px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        /* Topbar padronizada com o e-SUS APS PEC */
+        .topbar { background-color: #692A85; color: white; padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .topbar .title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
         .topbar .center-title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-        .topbar .user-info { font-size: 13px; display: flex; align-items: center; gap: 12px; }
-        .topbar .user-info span { background: rgba(255,255,255,0.15); padding: 4px 10px; border-radius: 12px; font-weight: 500; }
-        .btn-logout { background-color: #dc2626; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; transition: background 0.2s; }
-        .btn-logout:hover { background-color: #b91c1c; }
 
+        /* Barra de Navegação Horizontal Padronizada */
         .navbar { background: white; border-bottom: 1px solid #e5e7eb; padding: 0 24px; display: flex; gap: 20px; overflow-x: auto; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
         .navbar a { text-decoration: none; color: #4b5563; font-size: 14px; font-weight: 600; padding: 14px 0; border-bottom: 3px solid transparent; transition: all 0.2s; display: inline-block; flex-shrink: 0; }
         .navbar a:hover, .navbar a.active { color: #692A85; border-bottom-color: #692A85; }
@@ -31,42 +31,86 @@
         .header-title { font-size: 20px; color: #1f2937; font-weight: 700; }
         .header-sub { font-size: 14px; color: #6b7280; margin-top: 4px; }
         .btn-novo { background-color: #059669; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; }
-        .btn-novo:hover { background-color: #047857; }
+        .btn-novo:hover { background-color: #047857; color: white; }
         
-        table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
-        th, td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
-        th { background: #f9fafb; color: #374151; font-weight: 600; }
+        .table-data { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
+        .table-data th, .table-data td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
+        .table-data th { background: #f9fafb; color: #374151; font-weight: 600; }
         .badge-ativo { background: #d1fae5; color: #065f46; padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
         .badge-inativo { background: #ffeeef; color: #991b1b; padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: 600; }
-        .btn-edit { background: #d97706; color: white; border: none; padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .btn-edit { background: #d97706; color: white; border: none; padding: 6px 14px; border-radius: 4px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
         .btn-edit:hover { background: #b45309; }
         
+        /* Modal customizado */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-content { background: white; width: 100%; max-width: 600px; border-radius: 8px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 16px; }
-        .btn-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #6b7280; }
+        .modal-content-custom { background: white; width: 100%; max-width: 600px; border-radius: 8px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; }
+        .modal-header-custom { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 16px; }
+        .btn-close-custom { background: none; border: none; font-size: 20px; cursor: pointer; color: #6b7280; }
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
-        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; background: white; }
         .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #692A85; box-shadow: 0 0 0 3px rgba(105, 42, 133, 0.1); }
         .form-group textarea { resize: vertical; min-height: 90px; }
-        .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 14px; }
+        .modal-footer-custom { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 14px; }
         .btn-cancel { background: #e5e7eb; color: #374151; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; }
         .btn-save { background: #692A85; color: white; border: none; padding: 8px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .btn-save:hover { background: #521d6b; }
         
         .footer { text-align: center; padding: 14px 0; font-size: 12px; color: #6b7280; background-color: #e5e7eb; margin-top: auto; border-top: 1px solid #d1d5db; }
     </style>
 </head>
 <body>
+    
+    <!-- Topbar Integrada com o Menu Dropdown e Seta para Baixo (Padrão e-SUS PEC) -->
     <div class="topbar">
         <div class="title">{{ session.get('estabelecimento', 'CAPS II — São Roque') }}</div>
         <div class="center-title">Gestão de Especialidades</div>
-        <div class="user-info">
-            Olá, <strong>{{ session.nome }}</strong>
-            {% if perfil %}
-                <span>{{ perfil }}</span>
-            {% endif %}
-            <a href="/logout" class="btn-logout">Sair</a>
+        
+        <div class="dropdown">
+            <a class="dropdown-toggle text-white d-flex align-items-center text-decoration-none py-1 px-2 rounded" 
+               href="#" id="userMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(255,255,255,0.15);">
+                <div class="text-end me-2">
+                    <span class="d-block fw-semibold text-white" style="font-size: 0.9rem;">{{ session.get('nome') }}</span>
+                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('estabelecimento') }}</small>
+                </div>
+                <span class="ms-1 text-white opacity-75 small">▼</span>
+            </a>
+
+            <!-- Menu Flutuante (Dropdown) idêntico ao e-SUS PEC -->
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-2" aria-labelledby="userMenuDropdown" style="min-width: 280px;">
+                <li><h6 class="dropdown-header text-uppercase text-secondary fw-bold" style="font-size: 0.75rem;">Acesso Atual</h6></li>
+                <li><span class="dropdown-item-text py-1 text-dark small"><strong>CBO:</strong> {{ session.get('ocupacao') }} ({{ session.get('cbo_codigo') }})</span></li>
+                <li><span class="dropdown-item-text py-1 text-dark small"><strong>Unidade:</strong> {{ session.get('estabelecimento') }}</span></li>
+                <li><span class="dropdown-item-text py-1 text-muted small">Último acesso: {{ session.get('ultimo_acesso', 'Agora') }}</span></li>
+                
+                <li><hr class="dropdown-divider my-2"></li>
+
+                {% if session.get('total_unidades', 1) > 1 %}
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center text-primary fw-medium" href="{{ url_for('selecionar_unidade') }}">
+                        <span class="me-2">🔄</span> Trocar acesso
+                    </a>
+                </li>
+                {% endif %}
+
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalHistoricoAcessos">
+                        <span class="me-2 text-secondary">📊</span> Ver histórico de acessos
+                    </a>
+                </li>
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalAlterarSenha">
+                        <span class="me-2 text-secondary">🔑</span> Alterar senha do e-SUS APS PEC
+                    </a>
+                </li>
+
+                <li><hr class="dropdown-divider my-2"></li>
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center text-danger fw-semibold" href="{{ url_for('logout') }}">
+                        <span class="me-2">🚪</span> Sair
+                    </a>
+                </li>
+            </ul>
         </div>
     </div>
 
@@ -100,7 +144,7 @@
                 <button type="button" class="btn-novo" onclick="abrirModalNovo()">+ Novo Aviso / Campanha</button>
             </div>
 
-            <table>
+            <table class="table-data">
                 <thead>
                     <tr>
                         <th>Título da Campanha</th>
@@ -139,10 +183,10 @@
 
     <!-- MODAL DE CADASTRO / EDIÇÃO -->
     <div id="modalCampanha" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3 id="modalTitulo">Nova Campanha ou Aviso</h3>
-                <button type="button" class="btn-close" onclick="fecharModal()">&times;</button>
+        <div class="modal-content-custom">
+            <div class="modal-header-custom">
+                <h3 id="modalTitulo" class="fs-5 m-0">Nova Campanha ou Aviso</h3>
+                <button type="button" class="btn-close-custom" onclick="fecharModal()">&times;</button>
             </div>
             <form method="POST" action="/admin/configuracoes/campanhas/salvar" enctype="multipart/form-data">
                 <input type="hidden" id="campanha_id" name="id">
@@ -182,7 +226,7 @@
                     </select>
                 </div>
 
-                <div class="modal-footer">
+                <div class="modal-footer-custom">
                     <button type="button" class="btn-cancel" onclick="fecharModal()">Cancelar</button>
                     <button type="submit" class="btn-save">Salvar Campanha</button>
                 </div>
@@ -190,8 +234,55 @@
         </div>
     </div>
 
+    <!-- MODAL: HISTÓRICO DE ACESSOS -->
+    <div class="modal fade" id="modalHistoricoAcessos" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content p-3">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold">📊 Histórico de Acessos Recentes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">Registros de conexões e seleções de unidades vinculadas ao seu perfil no sistema.</p>
+                    <div class="alert alert-light border small py-2 mb-0">
+                        Último registro capturado: <strong>{{ session.get('ultimo_acesso', 'Agora') }}</strong>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ALTERAR SENHA -->
+    <div class="modal fade" id="modalAlterarSenha" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content p-3">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold">🔑 Alterar Senha do Sistema</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="/admin/profissionais/salvar">
+                        <div class="mb-3 text-start">
+                            <label class="form-label small fw-bold">Nova Senha (8 caracteres, mín. 3 letras):</label>
+                            <input type="password" name="senha" class="form-control form-control-sm" placeholder="Ex: abcd1234" required>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary btn-sm">Salvar Nova Senha</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="footer">Intranet CAPS II — São Roque &copy; 2026.</div>
 
+    <!-- Bootstrap 5 JS Bundle necessário para os Dropdowns e Modais do topo -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function abrirModalNovo() {
             document.getElementById('modalTitulo').innerText = 'Cadastrar Nova Campanha / Aviso';
