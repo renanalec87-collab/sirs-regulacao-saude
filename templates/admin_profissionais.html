@@ -11,20 +11,20 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; }
         
-        /* Topbar padronizada com o e-SUS APS PEC */
+        /* Topbar padronizada */
         .topbar { background-color: #692A85; color: white; padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .topbar .title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .topbar .title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
         .topbar .center-title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 
         /* Barra de Navegação Horizontal Padronizada */
-        .navbar { background: white; border-bottom: 1px solid #e5e7eb; padding: 0 24px; display: flex; flex-direction: row; gap: 20px; width: 100%; overflow-x: auto; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .navbar { background: white; border-bottom: 1px solid #e5e7eb; padding: 0 24px; display: flex; flex-direction: row; justify-content: flex-start; gap: 28px; width: 100%; overflow-x: auto; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
         .navbar a { text-decoration: none; color: #4b5563; font-size: 14px; font-weight: 600; padding: 14px 0; border-bottom: 3px solid transparent; transition: all 0.2s; display: inline-block; flex-shrink: 0; }
         .navbar a:hover, .navbar a.active { color: #692A85; border-bottom-color: #692A85; }
 
         .container { flex: 1; padding: 24px; max-width: 1200px; margin: 0 auto; width: 100%; display: block; }
 
         .page-header { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 24px; border-top: 4px solid #692A85; display: flex; justify-content: space-between; align-items: center; }
-        .page-header h2 { font-size: 18px; color: #1f2937; margin-bottom: 4px; }
+        .page-header h2 { font-size: 18px; color: #1f2937; margin-bottom: 4px; font-weight: 700; }
         .page-header p { font-size: 13px; color: #6b7280; }
 
         .search-card { background: white; padding: 20px 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 24px; display: flex; gap: 12px; align-items: center; }
@@ -32,12 +32,12 @@
         .search-input:focus { border-color: #692A85; box-shadow: 0 0 0 3px rgba(105, 42, 133, 0.1); }
 
         .btn-search { background-color: #692A85; color: white; border: none; padding: 12px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
-        .btn-search:hover { background-color: #521d6b; }
+        .btn-search:hover { background-color: #521d6b; color: white; }
         .btn-clear { background-color: #4b5563; color: white; border: none; padding: 12px 18px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
-        .btn-clear:hover { background-color: #374151; }
+        .btn-clear:hover { background-color: #374151; color: white; }
 
         .btn-novo { background-color: #059669; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; text-decoration: none; display: inline-block; white-space: nowrap; }
-        .btn-novo:hover { background-color: #047857; }
+        .btn-novo:hover { background-color: #047857; color: white; }
 
         .alert { padding: 12px 16px; border-radius: 6px; font-size: 14px; margin-bottom: 20px; }
         .alert-success { background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
@@ -57,31 +57,37 @@
         .btn-edit { background-color: #2563eb; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s; text-decoration: none; display: inline-block; }
         .btn-edit:hover { background-color: #1d4ed8; }
 
-        /* Modal customizado */
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-content-custom { background: white; width: 100%; max-width: 650px; border-radius: 8px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; }
-        .modal-header-custom { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 20px; }
-        .modal-header-custom h3 { font-size: 18px; color: #111827; }
-        .btn-close-custom { background: none; border: none; font-size: 20px; cursor: pointer; color: #6b7280; }
+        /* Modal customizado com Design Profissional */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px); z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
+        .modal-content-custom { background: white; width: 100%; max-width: 780px; border-radius: 12px; padding: 30px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); max-height: 92vh; overflow-y: auto; border-top: 5px solid #692A85; }
+        .modal-header-custom { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 16px; margin-bottom: 22px; }
+        .modal-header-custom h3 { font-size: 19px; color: #111827; font-weight: 700; }
+        .btn-close-custom { background: none; border: none; font-size: 22px; cursor: pointer; color: #6b7280; transition: color 0.2s; }
+        .btn-close-custom:hover { color: #111827; }
 
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
         .form-group-full { grid-column: span 2; }
-        .form-group { margin-bottom: 16px; }
+        .form-group { margin-bottom: 4px; }
         .form-group label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
-        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; background: white; }
-        .form-group input:focus, .form-group select:focus { border-color: #692A85; box-shadow: 0 0 0 3px rgba(105, 42, 133, 0.1); }
+        .form-group input, .form-group select { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; background: white; transition: all 0.2s; }
+        .form-group input:focus, .form-group select:focus { border-color: #692A85; box-shadow: 0 0 0 3px rgba(105, 42, 133, 0.12); }
 
-        .modal-footer-custom { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 16px; }
-        .btn-cancel { background: #e5e7eb; color: #374151; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; }
-        .btn-save { background: #692A85; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        /* Container de Vínculos Estilizado */
+        .vinculos-card-wrapper { background: #fdfcff; border: 1px solid #e9d5ff; border-radius: 8px; padding: 18px; margin-top: 6px; margin-bottom: 6px; }
+        .vinculos-table th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #4b5563; background: #f3e8ff; border-color: #e9d5ff; }
+        
+        .modal-footer-custom { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 18px; }
+        .btn-cancel { background: #e5e7eb; color: #374151; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .btn-cancel:hover { background: #d1d5db; }
+        .btn-save { background: #692A85; color: white; border: none; padding: 10px 24px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
         .btn-save:hover { background: #521d6b; }
 
-        .footer { text-align: center; padding: 14px 0; font-size: 12px; color: #6b7280; background-color: #e5e7eb; margin-top: auto; }
+        .footer { text-align: center; padding: 14px 0; font-size: 12px; color: #6b7280; background-color: #e5e7eb; margin-top: auto; border-top: 1px solid #d1d5db; }
     </style>
 </head>
 <body>
 
-    <!-- Topbar Integrada com o Menu Dropdown e Seta para Baixo (Padrão e-SUS PEC) -->
+    <!-- Topbar Integrada com o Menu Dropdown Padronizado -->
     <div class="topbar">
         <div class="title">{{ session.get('estabelecimento', 'CAPS II — São Roque') }}</div>
         <div class="center-title">Gestão de Especialidades</div>
@@ -91,12 +97,11 @@
                href="#" id="userMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(255,255,255,0.15);">
                 <div class="text-end me-2">
                     <span class="d-block fw-semibold text-white" style="font-size: 0.9rem;">{{ session.get('nome') }}</span>
-                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('estabelecimento') }}</small>
+                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('perfil') }}</small>
                 </div>
-                <span class="ms-1 text-white opacity-75 small">▼</span>
             </a>
 
-            <!-- Menu Flutuante (Dropdown) idêntico ao e-SUS PEC -->
+            <!-- Menu Flutuante (Dropdown) -->
             <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-2" aria-labelledby="userMenuDropdown" style="min-width: 280px;">
                 <li><h6 class="dropdown-header text-uppercase text-secondary fw-bold" style="font-size: 0.75rem;">Acesso Atual</h6></li>
                 <li><span class="dropdown-item-text py-1 text-dark small"><strong>CBO:</strong> {{ session.get('ocupacao') }} ({{ session.get('cbo_codigo') }})</span></li>
@@ -105,22 +110,23 @@
                 
                 <li><hr class="dropdown-divider my-2"></li>
 
-                {% if session.get('total_unidades', 1) > 1 %}
-                <li>
-                    <a class="dropdown-item rounded py-2 d-flex align-items-center text-primary fw-medium" href="{{ url_for('selecionar_unidade') }}">
-                        <span class="me-2">🔄</span> Trocar acesso
-                    </a>
-                </li>
-                {% endif %}
-
                 <li>
                     <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalHistoricoAcessos">
                         <span class="me-2 text-secondary">📊</span> Ver histórico de acessos
                     </a>
                 </li>
+
+                {% if session.get('total_unidades', 1) > 1 %}
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center text-primary fw-medium" href="{{ url_for('trocar_unidade') }}">
+                        <span class="me-2">🔄</span> Trocar unidade
+                    </a>
+                </li>
+                {% endif %}
+
                 <li>
                     <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalAlterarSenha">
-                        <span class="me-2 text-secondary">🔑</span> Alterar senha do e-SUS APS PEC
+                        <span class="me-2 text-secondary">🔑</span> Alterar senha
                     </a>
                 </li>
 
@@ -140,7 +146,7 @@
         <a href="/lista-espera">Lista de Espera & Regulação</a>
         <a href="/guias-fluxo">Guias & Fluxos de Encaminhamento</a>
         
-        {% if session.get('perfil') == 'NIVEL_I' or session.perfil == 'NIVEL_I' %}
+        {% if perfil == 'NIVEL_I' %}
             <a href="/admin/profissionais" class="active">Profissionais</a>
             <a href="/admin/estabelecimentos">Unidades de Saúde</a>
             <a href="/relatorios">Relatórios</a>
@@ -161,7 +167,7 @@
         <div class="page-header">
             <div>
                 <h2>Gerenciamento de Profissionais e Credenciais</h2>
-                <p>Cadastre novos servidores, defina níveis de acesso, lotação e vincule conselhos de classe.</p>
+                <p>Cadastre novos servidores, defina níveis de acesso, múltiplos vínculos de lotação e conselhos de classe.</p>
             </div>
             <button type="button" class="btn-novo" onclick="abrirModalNovo()">+ Novo Profissional</button>
         </div>
@@ -174,12 +180,33 @@
         </div>
 
         <div class="data-panel">
+            
+            <!-- PAGINAÇÃO SUPERIOR -->
+            {% if total_paginas > 1 %}
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: #f9fafb; border-bottom: 1px solid #e5e7eb; margin-bottom: 16px; border-radius: 6px;">
+                    <span style="font-size: 13px; color: #4b5563;">Página <strong>{{ pagina_atual }}</strong> de <strong>{{ total_paginas }}</strong> (Total: {{ total_registros }} registros)</span>
+                    <div style="display: flex; gap: 8px;">
+                        {% if pagina_atual > 1 %}
+                            <a href="/admin/profissionais?page={{ pagina_atual - 1 }}" style="background-color: #4b5563; color: white; padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; text-decoration: none;">← Voltar</a>
+                        {% else %}
+                            <span style="background-color: #d1d5db; color: #9ca3af; padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: not-allowed;">← Voltar</span>
+                        {% endif %}
+                        
+                        {% if pagina_atual < total_paginas %}
+                            <a href="/admin/profissionais?page={{ pagina_atual + 1 }}" style="background-color: #692A85; color: white; padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; text-decoration: none;">Avançar →</a>
+                        {% else %}
+                            <span style="background-color: #d1d5db; color: #9ca3af; padding: 5px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: not-allowed;">Avançar →</span>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
             <table class="table-data" id="tabelaProfissionais">
                 <thead>
                     <tr>
                         <th>Nome / E-mail</th>
                         <th>CPF</th>
-                        <th>Ocupação / Cargo</th>
+                        <th>Ocupação / Cargo (CBO)</th>
                         <th>Unidade de Lotação</th>
                         <th>Registro / Conselho</th>
                         <th>Nível de Acesso</th>
@@ -225,6 +252,26 @@
                     {% endfor %}
                 </tbody>
             </table>
+
+            <!-- PAGINAÇÃO INFERIOR -->
+            {% if total_paginas > 1 %}
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: #f9fafb; border-top: 1px solid #e5e7eb; margin-top: 16px; border-radius: 6px;">
+                    <span style="font-size: 13px; color: #4b5563;">Página <strong>{{ pagina_atual }}</strong> de <strong>{{ total_paginas }}</strong> (Total: {{ total_registros }} registros)</span>
+                    <div style="display: flex; gap: 8px;">
+                        {% if pagina_atual > 1 %}
+                            <a href="/admin/profissionais?page={{ pagina_atual - 1 }}" style="background-color: #4b5563; color: white; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 600; text-decoration: none;">← Voltar</a>
+                        {% else %}
+                            <span style="background-color: #d1d5db; color: #9ca3af; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: not-allowed;">← Voltar</span>
+                        {% endif %}
+                        
+                        {% if pagina_atual < total_paginas %}
+                            <a href="/admin/profissionais?page={{ pagina_atual + 1 }}" style="background-color: #692A85; color: white; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 600; text-decoration: none;">Avançar →</a>
+                        {% else %}
+                            <span style="background-color: #d1d5db; color: #9ca3af; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: not-allowed;">Avançar →</span>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
         </div>
     </div>
 
@@ -254,24 +301,34 @@
                         <input type="email" name="email" id="prof_email" placeholder="ana.souza@saoroque.sp.gov.br" required>
                     </div>
 
-                    <div class="form-group">
-                        <label>Ocupação / Cargo (CBO) *</label>
-                        <select name="cbo_id" id="prof_cbo_id" required>
-                            <option value="">Selecione a ocupação...</option>
-                            {% for cbo in cbos %}
-                                <option value="{{ cbo.id }}">{{ cbo.ocupacao }} ({{ cbo.sigla_conselho or 'Sem Conselho' }})</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Unidade de Lotação *</label>
-                        <select name="estabelecimento_id" id="prof_estabelecimento" required>
-                            <option value="">Selecione a unidade...</option>
-                            {% for est in estabelecimentos %}
-                                <option value="{{ est.id }}">{{ est.nome }}</option>
-                            {% endfor %}
-                        </select>
+                    <!-- SEÇÃO DE MÚLTIPLOS VÍNCULOS (UNIDADES E CBOS) -->
+                    <div class="form-group form-group-full vinculos-card-wrapper">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <label class="form-label fw-bold text-dark mb-0" style="font-size: 14px;">
+                                    🔗 Vínculos Profissionais (Unidades e CBOs) *
+                                </label>
+                                <span class="d-block text-muted small">Gerencie as unidades de lotação e ocupações vinculadas a este servidor.</span>
+                            </div>
+                            <button type="button" class="btn btn-outline-success btn-sm fw-semibold" id="btn-adicionar-vinculo">
+                                ➕ Adicionar Vínculo
+                            </button>
+                        </div>
+                        
+                        <div class="table-responsive mt-2">
+                            <table class="table table-sm table-bordered bg-white mb-0 vinculos-table align-middle" id="tabela-vinculos">
+                                <thead>
+                                    <tr>
+                                        <th>Unidade de Lotação</th>
+                                        <th>Ocupação / Cargo (CBO)</th>
+                                        <th style="width: 75px;" class="text-center">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="vinculos-container">
+                                    <!-- Linhas injetadas dinamicamente via JS -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -297,13 +354,13 @@
                     </div>
 
                     <div class="form-group form-group-full">
-                        <label>Senha de Acesso (Mínimo de 8 caracteres seguros) <span id="labelSenhaHelp" style="font-weight: normal; color: #6b7280; display: none;">(Deixe em branco para não alterar na edição)</span> *</label>
+                        <label>Senha de Acesso <span id="labelSenhaHelp" style="font-weight: normal; color: #6b7280; display: none;">(Deixe em branco para não alterar na edição)</span> *</label>
                         <input type="password" name="senha" id="prof_senha" placeholder="Mínimo de 8 caracteres seguros" minlength="8">
                     </div>
                 </div>
 
-                <!-- Bloco de Auditoria (Exibido apenas na edição) -->
-                <div id="blocoAuditoriaProfissional" style="display: none; font-size: 12px; color: #4b5563; background: #f9fafb; padding: 10px; border-radius: 6px; border: 1px solid #e5e7eb; margin-top: 10px;">
+                <!-- Bloco de Auditoria -->
+                <div id="blocoAuditoriaProfissional" style="display: none; font-size: 12px; color: #4b5563; background: #f9fafb; padding: 12px; border-radius: 6px; border: 1px solid #e5e7eb; margin-top: 14px;">
                     <div><strong>Cadastrado por:</strong> <span id="auditCriadoPor">-</span> em <span id="auditCriadoEm">-</span></div>
                     <div style="margin-top: 4px;"><strong>Última atualização por:</strong> <span id="auditAtualizadoPor">-</span> em <span id="auditAtualizadoEm">-</span></div>
                 </div>
@@ -315,6 +372,23 @@
             </form>
         </div>
     </div>
+
+    <!-- Template robusto em string JS para clonagem segura -->
+    <script>
+        const estabelecimentosOpcoes = `
+            <option value="">Selecione a unidade...</option>
+            {% for est in estabelecimentos %}
+            <option value="{{ est.id }}">{{ est.nome }}</option>
+            {% endfor %}
+        `;
+
+        const cbosOpcoes = `
+            <option value="">Selecione a ocupação...</option>
+            {% for cbo in cbos %}
+            <option value="{{ cbo.id }}">{{ cbo.ocupacao }} ({{ cbo.sigla_conselho or 'Sem Conselho' }})</option>
+            {% endfor %}
+        `;
+    </script>
 
     <!-- MODAL: HISTÓRICO DE ACESSOS -->
     <div class="modal fade" id="modalHistoricoAcessos" tabindex="-1" aria-hidden="true">
@@ -342,7 +416,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content p-3">
                 <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold">🔑 Alterar Senha do Sistema</h5>
+                    <h5 class="modal-title fw-bold">🔑 Alterar Senha</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -363,7 +437,7 @@
 
     <div class="footer">Intranet CAPS II — São Roque &copy; 2026.</div>
 
-    <!-- Bootstrap 5 JS Bundle necessário para os Dropdowns e Modais do topo -->
+    <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         function handleKeyPress(e) {
@@ -406,14 +480,60 @@
             i.value = v;
         }
 
+        // Lógica de Vínculos Múltiplos no Modal
+        const containerVinculos = document.getElementById('vinculos-container');
+        const btnAdicionarVinculo = document.getElementById('btn-adicionar-vinculo');
+
+        function adicionarLinhaVinculo(estabelecimentoId = '', cboId = '') {
+            const tr = document.createElement('tr');
+            tr.className = 'vinculo-row';
+            
+            tr.innerHTML = `
+                <td>
+                    <select name="estabelecimento_ids[]" class="form-select form-select-sm select-estabelecimento" required>
+                        ${estabelecimentosOpcoes}
+                    </select>
+                </td>
+                <td>
+                    <select name="cbo_ids[]" class="form-select form-select-sm select-cbo" required>
+                        ${cbosOpcoes}
+                    </select>
+                </td>
+                <td class="text-center align-middle">
+                    <button type="button" class="btn btn-outline-danger btn-sm btn-remover-vinculo" title="Remover vínculo">
+                        🗑️
+                    </button>
+                </td>
+            `;
+
+            if (estabelecimentoId) {
+                tr.querySelector('.select-estabelecimento').value = estabelecimentoId;
+            }
+            if (cboId) {
+                tr.querySelector('.select-cbo').value = cboId;
+            }
+
+            tr.querySelector('.btn-remover-vinculo').addEventListener('click', function() {
+                if (containerVinculos.querySelectorAll('tr').length > 1) {
+                    tr.remove();
+                } else {
+                    alert('O profissional deve ter pelo menos um vínculo ativo.');
+                }
+            });
+
+            containerVinculos.appendChild(tr);
+        }
+
+        btnAdicionarVinculo.addEventListener('click', function() {
+            adicionarLinhaVinculo();
+        });
+
         function abrirModalNovo() {
             document.getElementById('modalTitulo').innerText = 'Cadastrar Novo Profissional';
             document.getElementById('prof_id').value = '';
             document.getElementById('prof_nome').value = '';
             document.getElementById('prof_cpf').value = '';
             document.getElementById('prof_email').value = '';
-            document.getElementById('prof_cbo_id').value = '';
-            document.getElementById('prof_estabelecimento').value = '';
             document.getElementById('prof_perfil').value = 'NIVEL_II';
             document.getElementById('prof_ativo').value = '1';
             document.getElementById('prof_registro').value = '';
@@ -421,6 +541,10 @@
             document.getElementById('prof_senha').setAttribute('required', 'true');
             document.getElementById('labelSenhaHelp').style.display = 'none';
             document.getElementById('blocoAuditoriaProfissional').style.display = 'none';
+            
+            containerVinculos.innerHTML = '';
+            adicionarLinhaVinculo();
+
             document.getElementById('modalProfissional').style.display = 'flex';
         }
 
@@ -430,8 +554,6 @@
             document.getElementById('prof_nome').value = prof.nome;
             document.getElementById('prof_cpf').value = prof.cpf ? formatarCPFString(prof.cpf) : '';
             document.getElementById('prof_email').value = prof.email;
-            document.getElementById('prof_cbo_id').value = prof.cbo_id || '';
-            document.getElementById('prof_estabelecimento').value = prof.estabelecimento_id || '';
             document.getElementById('prof_perfil').value = prof.perfil || 'NIVEL_II';
             
             const statusAtivo = (prof.ativo === true || prof.ativo === 1 || prof.ativo === "1") ? '1' : '0';
@@ -441,6 +563,17 @@
             document.getElementById('prof_senha').value = '';
             document.getElementById('prof_senha').removeAttribute('required');
             document.getElementById('labelSenhaHelp').style.display = 'inline';
+
+            containerVinculos.innerHTML = '';
+            if (prof.vinculos && prof.vinculos.length > 0) {
+                prof.vinculos.forEach(v => {
+                    adicionarLinhaVinculo(v.estabelecimento_id, v.cbo_id);
+                });
+            } else if (prof.estabelecimento_id && prof.cbo_id) {
+                adicionarLinhaVinculo(prof.estabelecimento_id, prof.cbo_id);
+            } else {
+                adicionarLinhaVinculo();
+            }
 
             const blocoAudit = document.getElementById('blocoAuditoriaProfissional');
             const criadoPor = prof.criado_por_nome || prof.criador_nome || 'Sistema';

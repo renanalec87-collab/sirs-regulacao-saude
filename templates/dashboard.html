@@ -11,12 +11,12 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; }
         
-        /* Topbar padronizada com o e-SUS APS PEC */
+        /* Topbar padronizada */
         .topbar { background-color: #692A85; color: white; padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .topbar .title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .topbar .title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
         .topbar .center-title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 
-        .navbar { background: white; border-bottom: 1px solid #e5e7eb; padding: 0 24px; display: flex; flex-direction: row; gap: 20px; width: 100%; overflow-x: auto; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .navbar { background: white; border-bottom: 1px solid #e5e7eb; padding: 0 24px; display: flex; flex-direction: row; justify-content: flex-start; gap: 28px; width: 100%; overflow-x: auto; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
         .navbar a { text-decoration: none; color: #4b5563; font-size: 14px; font-weight: 600; padding: 14px 0; border-bottom: 3px solid transparent; transition: all 0.2s; display: inline-block; flex-shrink: 0; }
         .navbar a:hover, .navbar a.active { color: #692A85; border-bottom-color: #692A85; }
 
@@ -81,11 +81,17 @@
         .btn-save:hover { background: #521d6b; }
 
         .footer { text-align: center; padding: 14px 0; font-size: 12px; color: #6b7280; background-color: #e5e7eb; margin-top: auto; }
+        
+        /* Estilos para o Autocomplete de CIDs dinâmico */
+        .autocomplete-container { position: relative; }
+        .autocomplete-results { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #d1d5db; border-top: none; border-radius: 0 0 6px 6px; max-height: 200px; overflow-y: auto; z-index: 1050; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none; }
+        .autocomplete-item { padding: 8px 12px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f3f4f6; color: #1f2937; }
+        .autocomplete-item:hover { background-color: #f3f4f6; color: #692A85; font-weight: 500; }
     </style>
 </head>
 <body>
 
-    <!-- Topbar Integrada com o Menu Dropdown e Seta para Baixo (Padrão e-SUS PEC) -->
+    <!-- Topbar Integrada com o Menu Dropdown Padronizado -->
     <div class="topbar">
         <div class="title">{{ session.get('estabelecimento', 'CAPS II — São Roque') }}</div>
         <div class="center-title">Gestão de Especialidades</div>
@@ -95,12 +101,11 @@
                href="#" id="userMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(255,255,255,0.15);">
                 <div class="text-end me-2">
                     <span class="d-block fw-semibold text-white" style="font-size: 0.9rem;">{{ session.get('nome') }}</span>
-                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('estabelecimento') }}</small>
+                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('perfil') }}</small>
                 </div>
-                <span class="ms-1 text-white opacity-75 small">▼</span>
             </a>
 
-            <!-- Menu Flutuante (Dropdown) idêntico ao e-SUS PEC -->
+            <!-- Menu Flutuante (Dropdown) -->
             <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-2" aria-labelledby="userMenuDropdown" style="min-width: 280px;">
                 <li><h6 class="dropdown-header text-uppercase text-secondary fw-bold" style="font-size: 0.75rem;">Acesso Atual</h6></li>
                 <li><span class="dropdown-item-text py-1 text-dark small"><strong>CBO:</strong> {{ session.get('ocupacao') }} ({{ session.get('cbo_codigo') }})</span></li>
@@ -109,22 +114,23 @@
                 
                 <li><hr class="dropdown-divider my-2"></li>
 
-                {% if session.get('total_unidades', 1) > 1 %}
-                <li>
-                    <a class="dropdown-item rounded py-2 d-flex align-items-center text-primary fw-medium" href="{{ url_for('selecionar_unidade') }}">
-                        <span class="me-2">🔄</span> Trocar acesso
-                    </a>
-                </li>
-                {% endif %}
-
                 <li>
                     <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalHistoricoAcessos">
                         <span class="me-2 text-secondary">📊</span> Ver histórico de acessos
                     </a>
                 </li>
+
+               {% if session.get('total_unidades', 1) > 1 %}
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center text-primary fw-medium" href="{{ url_for('trocar_unidade') }}">
+                        <span class="me-2">🔄</span> Trocar unidade
+                    </a>
+                </li>
+                {% endif %}
+
                 <li>
                     <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalAlterarSenha">
-                        <span class="me-2 text-secondary">🔑</span> Alterar senha do e-SUS APS PEC
+                        <span class="me-2 text-secondary">🔑</span> Alterar senha
                     </a>
                 </li>
 
@@ -246,7 +252,6 @@
         </div>
 
         <div id="listaCompletaContainer">
-            <!-- CABEÇALHO DA LISTAGEM COM PAGINAÇÃO NO TOPO -->
             <div id="cabecalhoListaContainer" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; background: white; padding: 16px 20px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); border-left: 4px solid #692A85;">
                 <h3 id="tituloListaResultados" style="font-size: 16px; color: #374151; font-weight: 600; margin: 0;"></h3>
                 <div id="paginacaoTopo" style="display: flex; gap: 8px; align-items: center;"></div>
@@ -349,7 +354,6 @@
                 <button type="button" class="btn-close-custom" onclick="fecharModalLista()">&times;</button>
             </div>
 
-            <!-- Alerta visual moderno para duplicidade ativa -->
             <div id="avisoDuplicidadeFila" style="display: none;" class="alert alert-warning">
                 <strong>Atenção:</strong> Este paciente já possui uma solicitação ativa (<span id="textoEspecialidadeAtiva" style="font-weight: 700;"></span>) aguardando ou em atendimento. Não é permitido duplicar a mesma modalidade.
             </div>
@@ -370,18 +374,13 @@
                     <small id="avisoFaixaEtaria" style="color: #692A85; font-size: 12px; font-weight: 600; margin-top: 4px; display: block;"></small>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group autocomplete-container">
                     <label for="input_cid_busca">Diagnóstico / CID (CID-10 ou CID-11) *</label>
-                    <input type="text" id="input_cid_busca" placeholder="Digite o código (ex: F32 ou 6A02) ou a descrição..." list="lista_cids_opcoes" autocomplete="off" required>
+                    <input type="text" id="input_cid_busca" placeholder="Digite o código (ex: F32 ou 6A02) ou a descrição..." autocomplete="off" required oninput="buscarCidsDinamico(this.value)">
+                    <div id="autocompleteResultadosCid" class="autocomplete-results"></div>
                     
-                    <datalist id="lista_cids_opcoes">
-                        {% for cid in cids %}
-                            <option value="[{{ cid.versao }}] {{ cid.codigo }} - {{ cid.descricao }}">
-                        {% endfor %}
-                    </datalist>
-
                     <input type="hidden" id="cid_id" name="cid_id" required>
-                    <small style="color: #6b7280; font-size: 11px; margin-top: 4px; display: block;">Digite para filtrar e selecione uma das opções da lista sugerida.</small>
+                    <small style="color: #6b7280; font-size: 11px; margin-top: 4px; display: block;">Digite pelo menos 2 caracteres para pesquisar e selecione uma opção da lista.</small>
                 </div>
 
                 <div class="form-group">
@@ -480,7 +479,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content p-3">
                 <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold">🔑 Alterar Senha do Sistema</h5>
+                    <h5 class="modal-title fw-bold">🔑 Alterar Senha</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -503,7 +502,7 @@
         Intranet CAPS II — São Roque &copy; 2026.
     </div>
 
-    <!-- Bootstrap 5 JS Bundle necessário para os Dropdowns e Modais do topo -->
+    <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const PERFIL_USUARIO = "{{ perfil }}";
@@ -515,6 +514,7 @@
         let filtroStatusAtual = '';
         let paginaAtualGlobal = 1;
         let totalPaginasGlobal = 1;
+        let timeoutCid = null;
 
         const cbosCadastrados = [
             {% for cbo in cbos %}
@@ -526,21 +526,54 @@
             {% endfor %}
         ];
 
-        const mapaCids = {
-            {% for cid in cids %}
-            "[{{ cid.versao }}] {{ cid.codigo }} - {{ cid.descricao }}": "{{ cid.id }}",
-            {% endfor %}
-        };
-
-        document.getElementById('input_cid_busca')?.addEventListener('input', function() {
-            const valorDigitado = this.value;
+        // Função de Autocomplete Dinâmico para CIDs no modal de Lista de Espera
+        function buscarCidsDinamico(termo) {
+            clearTimeout(timeoutCid);
+            const containerRes = document.getElementById('autocompleteResultadosCid');
             const inputHiddenId = document.getElementById('cid_id');
-            if (mapaCids[valorDigitado]) {
-                inputHiddenId.value = mapaCids[valorDigitado];
-                this.setCustomValidity("");
-            } else {
-                inputHiddenId.value = "";
-                this.setCustomValidity("Por favor, selecione um CID válido a partir da lista sugerida.");
+            
+            inputHiddenId.value = ""; // Limpa até selecionar um válido
+
+            if (termo.trim().length < 2) {
+                containerRes.style.display = 'none';
+                containerRes.innerHTML = '';
+                return;
+            }
+
+            timeoutCid = setTimeout(() => {
+                fetch(`/api/cids/buscar?q=${encodeURIComponent(termo)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.sucesso && data.dados.length > 0) {
+                            let html = '';
+                            data.dados.forEach(cid => {
+                                const rotuloExibicao = `[${cid.versao}] ${cid.codigo} - ${cid.descricao}`;
+                                html += `<div class="autocomplete-item" onclick='selecionarCidDinamico(${JSON.stringify(cid)})'>${rotuloExibicao}</div>`;
+                            });
+                            containerRes.innerHTML = html;
+                            containerRes.style.display = 'block';
+                        } else {
+                            containerRes.innerHTML = `<div class="autocomplete-item text-muted">Nenhum CID encontrado.</div>`;
+                            containerRes.style.display = 'block';
+                        }
+                    })
+                    .catch(err => console.error('Erro ao buscar CIDs:', err));
+            }, 300);
+        }
+
+        function selecionarCidDinamico(cid) {
+            const rotuloExibicao = `[${cid.versao}] ${cid.codigo} - ${cid.descricao}`;
+            document.getElementById('input_cid_busca').value = rotuloExibicao;
+            document.getElementById('cid_id').value = cid.id;
+            document.getElementById('autocompleteResultadosCid.').style.display = 'none';
+            document.getElementById('autocompleteResultadosCid').style.display = 'none';
+        }
+
+        // Fecha o autocomplete se clicar fora
+        window.addEventListener('click', function(e) {
+            if (!document.getElementById('input_cid_busca')?.contains(e.target)) {
+                const res = document.getElementById('autocompleteResultadosCid');
+                if (res) res.style.display = 'none';
             }
         });
 
@@ -642,7 +675,6 @@
             const container = document.getElementById('cardsListaPacientes');
             document.getElementById('tituloListaResultados').innerText = `${titulo} (Página ${paginaAtualGlobal} de ${totalPaginasGlobal})`;
             
-            // Botões de Paginação no Topo
             const paginacaoTopo = document.getElementById('paginacaoTopo');
             paginacaoTopo.innerHTML = '';
             if (totalPaginasGlobal > 1) {
@@ -687,7 +719,6 @@
                 container.appendChild(card);
             });
 
-            // Botões de Paginação no Rodapé da Lista
             if (totalPaginasGlobal > 1) {
                 const paginacaoDiv = document.createElement('div');
                 paginacaoDiv.style.cssText = "display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding: 16px 20px; background: white; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); border-left: 4px solid #692A85;";
@@ -786,6 +817,8 @@
             
             document.getElementById('le_usuario_id').value = pacienteAtual.id;
             document.getElementById('le_paciente_nome').value = pacienteAtual.nome;
+            document.getElementById('input_cid_busca').value = '';
+            document.getElementById('cid_id').value = '';
             document.getElementById('avisoDuplicidadeFila').style.display = 'none';
             document.getElementById('btnSalvarFila').disabled = false;
             document.getElementById('btnSalvarFila').style.opacity = '1';
@@ -870,6 +903,15 @@
 
         function validarInsercaoFila(e) {
             const modalidade = document.getElementById('modalidade_atendimento').value;
+            const cidId = document.getElementById('cid_id').value;
+            
+            if (!cidId) {
+                alert('Por favor, selecione um CID válido a partir das opções sugeridas na digitação.');
+                document.getElementById('input_cid_busca').focus();
+                e.preventDefault();
+                return false;
+            }
+
             const itemAtivo = historicoPacienteCache.find(h => h.especialidade === modalidade && h.status === 'Em andamento');
             if (itemAtivo) {
                 alert('Operação bloqueada: O paciente já possui solicitação ativa para esta modalidade.');
@@ -879,7 +921,6 @@
             return true;
         }
 
-        // --- FUNÇÕES DE FILTRAGEM ESTILO EXCEL NO HISTÓRICO ---
         function toggleMenuFiltro(event, menuId) {
             event.stopPropagation();
             fecharTodosMenusFiltro();

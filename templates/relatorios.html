@@ -9,13 +9,13 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <!-- Chart.js para o Gráfico Executivo -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Bootstrap 5 CSS (Necessário para o Dropdown e Modais do e-SUS PEC) -->
+    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; color: #1f2937; }
         
-        /* Topbar atualizada para o padrão e-SUS APS PEC */
+        /* Topbar padronizada */
         .topbar { background-color: #692A85; color: white; padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .topbar .title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
         .topbar .center-title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -82,11 +82,10 @@
 
         /* Modais */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-content { background: white; width: 100%; max-width: 520px; border-radius: 8px; padding: 28px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); display: flex; flex-direction: column; gap: 16px; position: relative; z-index: 1001; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; }
-        .modal-header h3 { font-size: 18px; color: #111827; font-weight: 700; }
-        .btn-close { background: none; border: none; font-size: 20px; cursor: pointer; color: #6b7280; }
-        .modal-footer { display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px; border-top: 1px solid #e5e7eb; padding-top: 16px; }
+        .modal-content-custom { background: white; width: 100%; max-width: 520px; border-radius: 8px; padding: 28px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); display: flex; flex-direction: column; gap: 16px; position: relative; z-index: 1001; }
+        .modal-header-custom { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; }
+        .modal-header-custom h3 { font-size: 18px; color: #111827; font-weight: 700; }
+        .modal-footer-custom { display: flex; justify-content: flex-end; gap: 12px; margin-top: 10px; border-top: 1px solid #e5e7eb; padding-top: 16px; }
 
         .alert-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); z-index: 2000; justify-content: center; align-items: center; }
         .alert-modal-content { background: white; width: 100%; max-width: 420px; border-radius: 8px; padding: 28px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 14px; text-align: center; position: relative; }
@@ -107,7 +106,7 @@
 
         /* Estilização Profissional para Impressão e PDF Oficial */
         @media print {
-            .topbar, .navbar-custom, .filter-panel, .map-section .map-controls, .footer, .modal-overlay, .alert-overlay, .btn-print-action { display: none !important; }
+            .topbar, .navbar-custom, .filter-panel, .map-section, .footer, .modal-overlay, .alert-overlay, .btn-print-action { display: none !important; }
             body { background: white; color: black; font-size: 9pt; }
             .container-main { max-width: 100%; padding: 0; margin: 0; }
             
@@ -132,14 +131,13 @@
             .chart-print-section { display: block !important; box-shadow: none; border: 1px solid #d1d5db; border-top: 3px solid #692A85 !important; padding: 14px; break-inside: avoid; page-break-inside: avoid; margin-bottom: 14px; }
             .chart-print-container { height: 200px; }
 
-            .map-section { display: block !important; box-shadow: none; border: 1px solid #d1d5db; border-top: 3px solid #692A85 !important; padding: 14px; break-inside: avoid; page-break-inside: avoid; }
-            #mapa-sao-roque { height: 350px !important; border: 1px solid #9ca3af; }
+            .map-section { display: none !important; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Topbar Integrada com o Menu Dropdown e Seta para Baixo (Padrão e-SUS PEC) -->
+    <!-- Topbar Integrada com o Menu Dropdown Padronizado -->
     <div class="topbar">
         <div class="title">{{ session.get('estabelecimento', 'CAPS II — São Roque') }}</div>
         <div class="center-title">Gestão de Especialidades</div>
@@ -149,12 +147,11 @@
                href="#" id="userMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(255,255,255,0.15);">
                 <div class="text-end me-2">
                     <span class="d-block fw-semibold text-white" style="font-size: 0.9rem;">{{ session.get('nome') }}</span>
-                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('estabelecimento') }}</small>
+                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('perfil') }}</small>
                 </div>
-                <span class="ms-1 text-white opacity-75 small">▼</span>
             </a>
 
-            <!-- Menu Flutuante (Dropdown) idêntico à Imagem 2 -->
+            <!-- Menu Flutuante (Dropdown) -->
             <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-2" aria-labelledby="userMenuDropdown" style="min-width: 280px;">
                 <li><h6 class="dropdown-header text-uppercase text-secondary fw-bold" style="font-size: 0.75rem;">Acesso Atual</h6></li>
                 <li><span class="dropdown-item-text py-1 text-dark small"><strong>CBO:</strong> {{ session.get('ocupacao') }} ({{ session.get('cbo_codigo') }})</span></li>
@@ -163,22 +160,23 @@
                 
                 <li><hr class="dropdown-divider my-2"></li>
 
-                {% if session.get('total_unidades', 1) > 1 %}
-                <li>
-                    <a class="dropdown-item rounded py-2 d-flex align-items-center text-primary fw-medium" href="{{ url_for('selecionar_unidade') }}">
-                        <span class="me-2">🔄</span> Trocar acesso
-                    </a>
-                </li>
-                {% endif %}
-
                 <li>
                     <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalHistoricoAcessos">
                         <span class="me-2 text-secondary">📊</span> Ver histórico de acessos
                     </a>
                 </li>
+
+                {% if session.get('total_unidades', 1) > 1 %}
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center text-primary fw-medium" href="{{ url_for('trocar_unidade') }}">
+                        <span class="me-2">🔄</span> Trocar unidade
+                    </a>
+                </li>
+                {% endif %}
+
                 <li>
                     <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalAlterarSenha">
-                        <span class="me-2 text-secondary">🔑</span> Alterar senha do e-SUS APS PEC
+                        <span class="me-2 text-secondary">🔑</span> Alterar senha
                     </a>
                 </li>
 
@@ -209,10 +207,10 @@
         <!-- Cabeçalho Oficial de Impressão / PDF -->
         <div class="print-only-header">
             <h2>Prefeitura Municipal da Estância Turística de São Roque</h2>
-            <h3>Departamento de Saúde — Central de Regulação e CAPS II</h3>
+            <h3>Departamento de Saúde</h3>
             <p style="font-size: 9pt; font-weight: 700; margin-top: 4px;">RELATÓRIO EXECUTIVO GERENCIAL DE INDICADORES DE SAÚDE</p>
             <p style="font-size: 8pt; margin-top: 3px;">
-                Período de Análise: <strong>{{ data_inicio or 'Início' }}</strong> até <strong>{{ data_fim or 'Fim' }}</strong> | 
+                Período de Análise: <strong>{{ data_inicio.split('-')|reverse|join('/') if data_inicio else 'Início' }}</strong> até <strong>{{ data_fim.split('-')|reverse|join('/') if data_fim else 'Fim' }}</strong> | 
                 Unidade Filtrada: <strong>{% if unidade_filtro %}{% for est in estabelecimentos %}{% if est.id|string == unidade_filtro %}{{ est.nome }}{% endif %}{% endfor %}{% else %}Todas as Unidades da Rede{% endif %}</strong> | 
                 Especialidade: <strong>{{ modalidade_filtro or 'Todas as Modalidades' }}</strong>
             </p>
@@ -232,11 +230,17 @@
         <!-- Painel de Filtros -->
         <form method="GET" action="/relatorios" class="filter-panel" id="filterForm">
             <div class="filter-group">
-                <label>Data Inicial</label>
+                <label class="d-flex justify-content-between align-items-center">
+                    Data Inicial
+                    <button type="button" class="btn btn-link p-0 text-muted" style="font-size: 11px; text-decoration: none;" onclick="limparCampoData('data_inicio')">Limpar</button>
+                </label>
                 <input type="date" id="data_inicio" name="data_inicio" value="{{ data_inicio or '' }}" required>
             </div>
             <div class="filter-group">
-                <label>Data Final (Máx. 3 Meses)</label>
+                <label class="d-flex justify-content-between align-items-center">
+                    Data Final (Máx. 3 Meses)
+                    <button type="button" class="btn btn-link p-0 text-muted" style="font-size: 11px; text-decoration: none;" onclick="limparCampoData('data_fim')">Limpar</button>
+                </label>
                 <input type="date" id="data_fim" name="data_fim" value="{{ data_fim or '' }}" required>
             </div>
             <div style="display: flex; gap: 10px; align-items: flex-end;">
@@ -298,21 +302,33 @@
                 </table>
             </div>
 
+            <!-- Tabela de Distribuição por Especialidade / Modalidade (Plurianual atualizada com cabeçalho agrupador Ano e anos completos) -->
             <div class="report-box">
                 <h4>Distribuição por Especialidade / Modalidade</h4>
-                <table class="table-data">
+                <table class="table-data" style="font-size: 8.5pt;">
                     <thead>
                         <tr>
-                            <th>Modalidade de Atendimento</th>
-                            <th style="text-align: right;">Quantidade</th>
-                            <th style="text-align: right;">Percentual (%)</th>
+                            <th rowspan="2" style="vertical-align: middle;">Modalidade</th>
+                            <th colspan="4" style="text-align: center; background-color: #f1f5f9; border-bottom: 1px solid #e5e7eb;">Ano</th>
+                            <th rowspan="2" style="text-align: right; vertical-align: middle;">Qtd</th>
+                            <th rowspan="2" style="text-align: right; vertical-align: middle;">%</th>
+                        </tr>
+                        <tr>
+                            <th style="text-align: center;">2023</th>
+                            <th style="text-align: center;">2024</th>
+                            <th style="text-align: center;">2025</th>
+                            <th style="text-align: center;">2026</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for row in modalidade_counts %}
                         <tr>
                             <td><strong>{{ row.modalidade_atendimento }}</strong></td>
-                            <td style="text-align: right;">{{ row.quantidade }}</td>
+                            <td style="text-align: center;">{{ row.ano_2023 or 0 }}</td>
+                            <td style="text-align: center;">{{ row.ano_2024 or 0 }}</td>
+                            <td style="text-align: center;">{{ row.ano_2025 or 0 }}</td>
+                            <td style="text-align: center;">{{ row.ano_2026 or 0 }}</td>
+                            <td style="text-align: right; font-weight: bold;">{{ row.quantidade }}</td>
                             <td style="text-align: right; color: #6b7280; font-weight: 500;">
                                 {% if total_geral_filtrado > 0 %}
                                     {{ "%.1f" | format((row.quantidade / total_geral_filtrado) * 100) }}%
@@ -322,20 +338,26 @@
                             </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="3" style="color: #9ca3af; text-align: center; padding: 20px;">Nenhum registro encontrado.</td></tr>
+                        <tr><td colspan="7" style="color: #9ca3af; text-align: center; padding: 20px;">Nenhum registro encontrado.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <!-- Tabela Consolidada por Unidade -->
+        <!-- Tabela Consolidada por Unidade ou Profissional da Unidade Filtrada -->
         <div class="report-box" style="margin-bottom: 28px;">
-            <h4>Desdobramento Analítico por Unidade Solicitante e Status</h4>
+            <h4>
+                {% if unidade_filtro %}
+                    Desdobramento Analítico por Profissional Solicitante (Produtividade e Status na Unidade)
+                {% else %}
+                    Desdobramento Analítico por Unidade Solicitante e Status Operacional
+                {% endif %}
+            </h4>
             <table class="table-data">
                 <thead>
                     <tr>
-                        <th>Unidade de Saúde Solicitante</th>
+                        <th>{% if unidade_filtro %}Profissional Responsável / CBO{% else %}Unidade de Saúde Solicitante{% endif %}</th>
                         <th style="text-align: center;"><span class="badge-status badge-aguardando">Aguardando</span></th>
                         <th style="text-align: center;"><span class="badge-status badge-atendimento">Em Atendimento</span></th>
                         <th style="text-align: center;"><span class="badge-status badge-finalizado">Finalizado</span></th>
@@ -345,16 +367,25 @@
                 </thead>
                 <tbody>
                     {% for row in unidade_counts %}
+                    {% if not unidade_filtro or row.total > 0 %}
                     <tr>
-                        <td><strong>{{ row.unidade }}</strong></td>
+                        <td>
+                            {% if unidade_filtro %}
+                                <strong>{{ row.profissional_nome or 'Profissional não identificado' }}</strong>
+                                <br><small style="color: #6b7280;">{{ row.profissional_cbo or 'Atendimento Geral' }}</small>
+                            {% else %}
+                                <strong>{{ row.unidade }}</strong>
+                            {% endif %}
+                        </td>
                         <td style="text-align: center; color: #92400e; font-weight: 600;">{{ row.aguardando }}</td>
                         <td style="text-align: center; color: #3730a3; font-weight: 600;">{{ row.em_atendimento }}</td>
                         <td style="text-align: center; color: #065f46; font-weight: 600;">{{ row.atendido }}</td>
                         <td style="text-align: center; color: #991b1b; font-weight: 600;">{{ row.cancelado }}</td>
                         <td style="text-align: right; font-weight: 700; color: #692A85;">{{ row.total }}</td>
                     </tr>
+                    {% endif %}
                     {% else %}
-                    <tr><td colspan="6" style="color: #9ca3af; text-align: center; padding: 20px;">Nenhum encaminhamento registrado na rede.</td></tr>
+                    <tr><td colspan="6" style="color: #9ca3af; text-align: center; padding: 20px;">Nenhum encaminhamento registrado para este critério.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -362,7 +393,13 @@
 
         <!-- Seção de Gráfico Executivo -->
         <div class="chart-print-section">
-            <h4>Consolidado Gráfico de Solicitações por Unidade</h4>
+            <h4>
+                {% if unidade_filtro %}
+                    Consolidado Gráfico de Solicitações por Profissional
+                {% else %}
+                    Consolidado Gráfico de Solicitações por Unidade
+                {% endif %}
+            </h4>
             <div class="chart-print-container">
                 <canvas id="graficoImpressao"></canvas>
             </div>
@@ -431,8 +468,8 @@
 
     <!-- MODAL DE CONSULTA DETALHADA -->
     <div id="modalAvancado" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
+        <div class="modal-content-custom">
+            <div class="modal-header-custom">
                 <h3>Consulta Detalhada Avançada</h3>
                 <button type="button" class="btn-close" onclick="fecharModalAvancado()">&times;</button>
             </div>
@@ -465,7 +502,7 @@
                     </select>
                 </div>
 
-                <div class="modal-footer">
+                <div class="modal-footer-custom">
                     <button type="button" class="btn-clear" onclick="fecharModalAvancado()">Cancelar</button>
                     <button type="submit" class="btn-filter">Gerar Relatório Analítico</button>
                 </div>
@@ -499,7 +536,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content p-3">
                 <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold">🔑 Alterar Senha do Sistema</h5>
+                    <h5 class="modal-title fw-bold">🔑 Alterar Senha</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -525,13 +562,22 @@
         const agora = new Date();
         document.getElementById('dataEmissaoPrint').innerText = agora.toLocaleDateString('pt-BR') + ' às ' + agora.toLocaleTimeString('pt-BR');
 
-        // Configuração do Gráfico Executivo Horizontal
+        function limparCampoData(id) {
+            document.getElementById(id).value = '';
+        }
+
         const unidadesLabels = [];
         const unidadesTotais = [];
         
         {% for row in unidade_counts %}
-            unidadesLabels.push("{{ row.unidade }}");
-            unidadesTotais.push({{ row.total }});
+            {% if not unidade_filtro or row.total > 0 %}
+                {% if unidade_filtro %}
+                    unidadesLabels.push("{{ row.profissional_nome or 'Profissional' }}");
+                {% else %}
+                    unidadesLabels.push("{{ row.unidade }}");
+                {% endif %}
+                unidadesTotais.push({{ row.total }});
+            {% endif %}
         {% endfor %}
 
         const ctxGrafico = document.getElementById('graficoImpressao').getContext('2d');
@@ -574,7 +620,6 @@
             mostrarAlertaCustomizado("Nenhum registro foi encontrado para o período ou critérios selecionados.");
         }
 
-        // Inicialização do Mapa Leaflet
         const map = L.map('mapa-sao-roque').setView([-23.5325, -47.1353], 12);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -697,6 +742,6 @@
         });
     </script>
 
-    <div class="footer">Intranet CAPS II — São Roque © 2026. Módulo Executivo de Indicadores de Saúde.</div>
+    <div class="footer">Intranet CAPS II — São Roque &copy; 2026. Módulo Executivo de Indicadores de Saúde.</div>
 </body>
 </html>

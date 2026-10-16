@@ -5,18 +5,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Parâmetros de Assiduidade — CAPS II</title>
-    <!-- Bɔtstrap 5 CSS fɔ di Dɔpdan ɛn Modal dɛn na di tɔp -->
+    <!-- Bootstrap 5 CSS para os Dropdowns e Modais do topo -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; }
         
-        /* Topbar padronizada com o e-SUS APS PEC */
+        /* Topbar padronizada */
         .topbar { background-color: #692A85; color: white; padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .topbar .title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
         .topbar .center-title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 
-        .navbar { background: white; border-bottom: 1px solid #e5e7eb; padding: 0 24px; display: flex; gap: 20px; overflow-x: auto; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .navbar { background: white; border-bottom: 1px solid #e5e7eb; padding: 0 24px; display: flex; justify-content: flex-start; gap: 28px; overflow-x: auto; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
         .navbar a { text-decoration: none; color: #4b5563; font-size: 14px; font-weight: 600; padding: 14px 0; border-bottom: 3px solid transparent; transition: all 0.2s; display: inline-block; flex-shrink: 0; }
         .navbar a:hover, .navbar a.active { color: #692A85; border-bottom-color: #692A85; }
 
@@ -37,7 +37,7 @@
     </style>
 </head>
 <body>
-    <!-- Topbar Integrada com o Menu Dropdown e Seta para Baixo (Padrão e-SUS PEC) -->
+    <!-- Topbar Integrada com o Menu Dropdown Padronizado -->
     <div class="topbar">
         <div class="title">{{ session.get('estabelecimento', 'CAPS II — São Roque') }}</div>
         <div class="center-title">Gestão de Especialidades</div>
@@ -47,12 +47,11 @@
                href="#" id="userMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(255,255,255,0.15);">
                 <div class="text-end me-2">
                     <span class="d-block fw-semibold text-white" style="font-size: 0.9rem;">{{ session.get('nome') }}</span>
-                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('estabelecimento') }}</small>
+                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('perfil') }}</small>
                 </div>
-                <span class="ms-1 text-white opacity-75 small">▼</span>
             </a>
 
-            <!-- Menu Flutuante (Dropdown) idêntico ao e-SUS PEC -->
+            <!-- Menu Flutuante (Dropdown) -->
             <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-2" aria-labelledby="userMenuDropdown" style="min-width: 280px;">
                 <li><h6 class="dropdown-header text-uppercase text-secondary fw-bold" style="font-size: 0.75rem;">Acesso Atual</h6></li>
                 <li><span class="dropdown-item-text py-1 text-dark small"><strong>CBO:</strong> {{ session.get('ocupacao') }} ({{ session.get('cbo_codigo') }})</span></li>
@@ -61,22 +60,23 @@
                 
                 <li><hr class="dropdown-divider my-2"></li>
 
-                {% if session.get('total_unidades', 1) > 1 %}
-                <li>
-                    <a class="dropdown-item rounded py-2 d-flex align-items-center text-primary fw-medium" href="{{ url_for('selecionar_unidade') }}">
-                        <span class="me-2">🔄</span> Trocar acesso
-                    </a>
-                </li>
-                {% endif %}
-
                 <li>
                     <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalHistoricoAcessos">
                         <span class="me-2 text-secondary">📊</span> Ver histórico de acessos
                     </a>
                 </li>
+
+                {% if session.get('total_unidades', 1) > 1 %}
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center text-primary fw-medium" href="{{ url_for('trocar_unidade') }}">
+                        <span class="me-2">🔄</span> Trocar unidade
+                    </a>
+                </li>
+                {% endif %}
+                
                 <li>
                     <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalAlterarSenha">
-                        <span class="me-2 text-secondary">🔑</span> Alterar senha do e-SUS APS PEC
+                        <span class="me-2 text-secondary">🔑</span> Alterar senha
                     </a>
                 </li>
 
@@ -126,9 +126,9 @@
                 <tbody>
                     {% for cbo in cbos %}
                     <tr>
+                        <td style="font-weight: 600; color: #1f2937; vertical-align: middle;">{{ cbo.ocupacao }}</td>
                         <form method="POST" action="/admin/configuracoes/assiduidade/salvar">
                             <input type="hidden" name="cbo_id" value="{{ cbo.id }}">
-                            <td style="font-weight: 600; color: #1f2937; vertical-align: middle;">{{ cbo.ocupacao }}</td>
                             <td style="vertical-align: middle;">
                                 <input type="number" name="meses_assiduidade" value="{{ cbo.meses_assiduidade if cbo.meses_assiduidade is not none else 6 }}" min="1" max="24" required> meses
                             </td>
@@ -169,7 +169,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content p-3">
                 <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold">🔑 Alterar Senha do Sistema</h5>
+                    <h5 class="modal-title fw-bold">🔑 Alterar Senha</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -190,7 +190,7 @@
 
     <div class="footer">Intranet CAPS II — São Roque &copy; 2026.</div>
 
-    <!-- Bɔtstrap 5 JS Bundle nɛsɛseri fɔ di Dɔpdan ɛn Modal dɛn na di tɔp -->
+    <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

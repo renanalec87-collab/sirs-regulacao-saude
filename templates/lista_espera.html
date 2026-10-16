@@ -11,9 +11,9 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; }
         
-        /* Topbar padronizada com o e-SUS APS PEC */
+        /* Topbar padronizada */
         .topbar { background-color: #692A85; color: white; padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .topbar .title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .topbar .title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
         .topbar .center-title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 
         .navbar-custom { background: white; border-bottom: 1px solid #e5e7eb; padding: 0 24px; display: flex; flex-direction: row; gap: 20px; width: 100%; overflow-x: auto; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
@@ -87,7 +87,7 @@
 </head>
 <body>
 
-    <!-- Topbar Integrada com o Menu Dropdown e Seta para Baixo (Padrão e-SUS PEC) -->
+    <!-- Topbar Integrada com o Menu Dropdown Padronizado -->
     <div class="topbar">
         <div class="title">{{ session.get('estabelecimento', 'CAPS II — São Roque') }}</div>
         <div class="center-title">Gestão de Especialidades</div>
@@ -97,12 +97,11 @@
                href="#" id="userMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(255,255,255,0.15);">
                 <div class="text-end me-2">
                     <span class="d-block fw-semibold text-white" style="font-size: 0.9rem;">{{ session.get('nome') }}</span>
-                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('estabelecimento') }}</small>
+                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('perfil') }}</small>
                 </div>
-                <span class="ms-1 text-white opacity-75 small">▼</span>
             </a>
 
-            <!-- Menu Flutuante (Dropdown) idêntico à Imagem 2 -->
+            <!-- Menu Flutuante (Dropdown) -->
             <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-2" aria-labelledby="userMenuDropdown" style="min-width: 280px;">
                 <li><h6 class="dropdown-header text-uppercase text-secondary fw-bold" style="font-size: 0.75rem;">Acesso Atual</h6></li>
                 <li><span class="dropdown-item-text py-1 text-dark small"><strong>CBO:</strong> {{ session.get('ocupacao') }} ({{ session.get('cbo_codigo') }})</span></li>
@@ -111,22 +110,23 @@
                 
                 <li><hr class="dropdown-divider my-2"></li>
 
-                {% if session.get('total_unidades', 1) > 1 %}
-                <li>
-                    <a class="dropdown-item rounded py-2 d-flex align-items-center text-primary fw-medium" href="{{ url_for('selecionar_unidade') }}">
-                        <span class="me-2">🔄</span> Trocar acesso
-                    </a>
-                </li>
-                {% endif %}
-
                 <li>
                     <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalHistoricoAcessos">
                         <span class="me-2 text-secondary">📊</span> Ver histórico de acessos
                     </a>
                 </li>
+
+                {% if session.get('total_unidades', 1) > 1 %}
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center text-primary fw-medium" href="{{ url_for('trocar_unidade') }}">
+                        <span class="me-2">🔄</span> Trocar unidade
+                    </a>
+                </li>
+                {% endif %}
+
                 <li>
                     <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalAlterarSenha">
-                        <span class="me-2 text-secondary">🔑</span> Alterar senha do e-SUS APS PEC
+                        <span class="me-2 text-secondary">🔑</span> Alterar senha
                     </a>
                 </li>
 
@@ -163,15 +163,16 @@
           {% endif %}
         {% endwith %}
 
-        <!-- CARD DE PESQUISA COM FILTRO DE STATUS -->
+        <!-- CARD DE PESQUISA COM FILTRO DE STATUS E DATAS -->
         <div class="search-card">
             <h2>Pesquisar na Lista de Espera</h2>
-            <p>Filtre os pacientes na fila por número de CPF, especialidade ou status de atendimento.</p>
+            <p>Filtre os pacientes na fila por número de CPF, especialidade, status de atendimento ou período de entrada.</p>
             
             <form method="GET" action="/lista-espera">
                 <input type="hidden" name="filtrado" value="1">
+                
+                <!-- Primeira linha de filtros -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px;">
-                    
                     <div>
                         <label for="searchCPF" style="font-size: 12px; color: #4b5563; font-weight: 600; margin-bottom: 4px; display: block;">Por CPF do Paciente</label>
                         <input type="text" id="searchCPF" name="cpf" class="search-input" placeholder="000.000.000-00" maxlength="14" value="{{ request.args.get('cpf', '') }}" oninput="mascaraCPF(this)">
@@ -199,12 +200,24 @@
                             <option value="Cancelado / Desistência" {% if request.args.get('status_filtro') == 'Cancelado / Desistência' %}selected{% endif %}>Apenas Cancelados</option>
                         </select>
                     </div>
-
                 </div>
 
-                <div style="display: flex; gap: 12px;">
-                    <button type="submit" class="btn-search">Pesquisar na Fila</button>
-                    <a href="/lista-espera" class="btn-clear">Limpar Filtros</a>
+                <!-- Segunda linha: Filtro por Período de Datas -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 16px; margin-bottom: 16px; align-items: end;">
+                    <div>
+                        <label for="dataInicio" style="font-size: 12px; color: #4b5563; font-weight: 600; margin-bottom: 4px; display: block;">Data Inicial</label>
+                        <input type="date" id="dataInicio" name="data_inicio" class="search-input" value="{{ request.args.get('data_inicio', '') }}">
+                    </div>
+
+                    <div>
+                        <label for="dataFim" style="font-size: 12px; color: #4b5563; font-weight: 600; margin-bottom: 4px; display: block;">Data Final</label>
+                        <input type="date" id="dataFim" name="data_fim" class="search-input" value="{{ request.args.get('data_fim', '') }}">
+                    </div>
+
+                    <div style="display: flex; gap: 12px;">
+                        <button type="submit" class="btn-search" style="flex: 1;">Pesquisar na Fila</button>
+                        <a href="/lista-espera" class="btn-clear" style="flex: 1;">Limpar Filtros</a>
+                    </div>
                 </div>
             </form>
         </div>
@@ -218,13 +231,13 @@
                         <span style="font-size: 12px; font-weight: normal; color: #6b7280;">Total: {{ total_registros }} (Pág. {{ pagina_atual }} de {{ total_paginas }})</span>
                         <div style="display: flex; gap: 6px;">
                             {% if pagina_atual > 1 %}
-                                <a href="/lista-espera?filtrado=1&cpf={{ request.args.get('cpf', '') }}&modalidade={{ request.args.get('modalidade', '') }}&status_filtro={{ request.args.get('status_filtro', 'ativos') }}&page={{ pagina_atual - 1 }}" class="btn-atualizar" style="background-color: #4b5563; padding: 4px 10px; font-size: 11px; text-decoration: none;">← Voltar</a>
+                                <a href="/lista-espera?filtrado=1&cpf={{ request.args.get('cpf', '') }}&modalidade={{ request.args.get('modalidade', '') }}&status_filtro={{ request.args.get('status_filtro', 'ativos') }}&data_inicio={{ request.args.get('data_inicio', '') }}&data_fim={{ request.args.get('data_fim', '') }}&page={{ pagina_atual - 1 }}" class="btn-atualizar" style="background-color: #4b5563; padding: 4px 10px; font-size: 11px; text-decoration: none;">← Voltar</a>
                             {% else %}
                                 <span class="btn-atualizar" style="background-color: #d1d5db; color: #9ca3af; padding: 4px 10px; font-size: 11px; cursor: not-allowed; text-decoration: none;">← Voltar</span>
                             {% endif %}
                             
                             {% if pagina_atual < total_paginas %}
-                                <a href="/lista-espera?filtrado=1&cpf={{ request.args.get('cpf', '') }}&modalidade={{ request.args.get('modalidade', '') }}&status_filtro={{ request.args.get('status_filtro', 'ativos') }}&page={{ pagina_atual + 1 }}" class="btn-atualizar" style="padding: 4px 10px; font-size: 11px; text-decoration: none;">Avançar →</a>
+                                <a href="/lista-espera?filtrado=1&cpf={{ request.args.get('cpf', '') }}&modalidade={{ request.args.get('modalidade', '') }}&status_filtro={{ request.args.get('status_filtro', 'ativos') }}&data_inicio={{ request.args.get('data_inicio', '') }}&data_fim={{ request.args.get('data_fim', '') }}&page={{ pagina_atual + 1 }}" class="btn-atualizar" style="padding: 4px 10px; font-size: 11px; text-decoration: none;">Avançar →</a>
                             {% else %}
                                 <span class="btn-atualizar" style="background-color: #d1d5db; color: #9ca3af; padding: 4px 10px; font-size: 11px; cursor: not-allowed; text-decoration: none;">Avançar →</span>
                             {% endif %}
@@ -335,13 +348,13 @@
                             <span style="font-size: 13px; color: #4b5563;">Página <strong>{{ pagina_atual }}</strong> de <strong>{{ total_paginas }}</strong> (Total: {{ total_registros }} registros)</span>
                             <div style="display: flex; gap: 8px;">
                                 {% if pagina_atual > 1 %}
-                                    <a href="/lista-espera?filtrado=1&cpf={{ request.args.get('cpf', '') }}&modalidade={{ request.args.get('modalidade', '') }}&status_filtro={{ request.args.get('status_filtro', 'ativos') }}&page={{ pagina_atual - 1 }}" class="btn-atualizar" style="background-color: #4b5563; text-decoration: none;">← Voltar</a>
+                                    <a href="/lista-espera?filtrado=1&cpf={{ request.args.get('cpf', '') }}&modalidade={{ request.args.get('modalidade', '') }}&status_filtro={{ request.args.get('status_filtro', 'ativos') }}&data_inicio={{ request.args.get('data_inicio', '') }}&data_fim={{ request.args.get('data_fim', '') }}&page={{ pagina_atual - 1 }}" class="btn-atualizar" style="background-color: #4b5563; text-decoration: none;">← Voltar</a>
                                 {% else %}
                                     <span class="btn-atualizar" style="background-color: #d1d5db; color: #9ca3af; cursor: not-allowed; text-decoration: none;">← Voltar</span>
                                 {% endif %}
                                 
                                 {% if pagina_atual < total_paginas %}
-                                    <a href="/lista-espera?filtrado=1&cpf={{ request.args.get('cpf', '') }}&modalidade={{ request.args.get('modalidade', '') }}&status_filtro={{ request.args.get('status_filtro', 'ativos') }}&page={{ pagina_atual + 1 }}" class="btn-atualizar" style="text-decoration: none;">Avançar →</a>
+                                    <a href="/lista-espera?filtrado=1&cpf={{ request.args.get('cpf', '') }}&modalidade={{ request.args.get('modalidade', '') }}&status_filtro={{ request.args.get('status_filtro', 'ativos') }}&data_inicio={{ request.args.get('data_inicio', '') }}&data_fim={{ request.args.get('data_fim', '') }}&page={{ pagina_atual + 1 }}" class="btn-atualizar" style="text-decoration: none;">Avançar →</a>
                                 {% else %}
                                     <span class="btn-atualizar" style="background-color: #d1d5db; color: #9ca3af; cursor: not-allowed; text-decoration: none;">Avançar →</span>
                                 {% endif %}
@@ -480,7 +493,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content p-3">
                 <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold">🔑 Alterar Senha do Sistema</h5>
+                    <h5 class="modal-title fw-bold">🔑 Alterar Senha</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
@@ -503,7 +516,7 @@
         Intranet CAPS II — São Roque &copy; 2026.
     </div>
 
-    <!-- Bootstrap 5 JS Bundle necessário para os Dropdowns e Modais do topo -->
+    <!-- Bootstrap 5 JS Bundle necessário para os Dropdowns e Modais -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let funcaoCallbackConfirmacao = null;

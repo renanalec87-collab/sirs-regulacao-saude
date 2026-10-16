@@ -1,42 +1,49 @@
 import sqlite3
 import os
+import pandas as pd
 
 DB_PATH = os.path.join(os.path.dirname(__file__), 'database.db')
+# Nome correto do arquivo que está na sua pasta lateral: cid.csv
+CSV_PATH = os.path.join(os.path.dirname(__file__), 'cid.csv')
 
 def importar_tabela_cids():
     if not os.path.exists(DB_PATH):
         print("Erro: Banco de dados não encontrado. Execute o init_db.py primeiro.")
         return
 
+    if not os.path.exists(CSV_PATH):
+        print(f"Erro: Arquivo '{CSV_PATH}' não encontrado na pasta do projeto.")
+        return
+
+    print("A ler o arquivo CSV de CIDs...")
+    try:
+        df = pd.read_csv(CSV_PATH, encoding='latin1', sep=';')
+    except Exception as e:
+        print(f"Erro ao ler o CSV: {e}")
+        return
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Exemplo de lista padrão inicial (CID-10 e CID-11) para teste ou base inicial.
-    # No futuro, isso pode ler um arquivo CSV oficial da OMS/Ministério da Saúde.
-    cids_iniciais = [
-        ('F20.0', 'Esquizofrenia paranoide', 'CID-10'),
-        ('F32.9', 'Episódio depressivo não especificado', 'CID-10'),
-        ('F84.0', 'Autismo infantil', 'CID-10'),
-        ('F90.0', 'Transtorno de Déficit de Atenção e Hiperatividade (TDAH)', 'CID-10'),
-        ('6A02', 'Transtorno do espectro autista', 'CID-11'),
-        ('6A70', 'Transtornos depressivos', 'CID-11')
-    ]
-
-    print("Iniciando importação de CIDs...")
-    inseridos = 0
+    print("Iniciando importação em massa para o banco de dados...")
     
-    for codigo, descricao, versao in cids_iniciais:
-        try:
-            # Insere nas duas tabelas para manter compatibilidade com o sistema
-            cursor.execute("INSERT OR IGNORE INTO cids (codigo, descricao, versao) VALUES (?, ?, ?)", (codigo, descricao, versao))
-            cursor.execute("INSERT OR IGNORE INTO cid (codigo, descricao, versao) VALUES (?, ?, ?)", (codigo, descricao, versao))
-            inseridos += 1
-        except Exception as e:
-            print(f"Erro ao inserir o CID {codigo}: {e}")
+    dados = []
+    for _, linha in df.iterrows():
+        codigo = str(linha.get('codigo', '')).strip()
+        descricao = str(linha.get('descricao', '')).strip()
+        versao = str(linha.get('versao', 'CID-10')).strip()
+        if codigo and descricao:
+            dados.append((codigo, descricao, versao))
+
+    # Insere todos os registos de uma só vez (muito rápido)
+    cursor.executemany(
+        "INSERT OR IGNORE INTO cids (codigo, descricao, versao) VALUES (?, ?, ?)",
+        dados
+    )
 
     conn.commit()
     conn.close()
-    print(f"Importação de CIDs concluída! {inseridos} registros processados.")
+    print(f"Importação concluída com sucesso! {len(dados)} registros processados.")
 
 if __name__ == '__main__':
     importar_tabela_cids()

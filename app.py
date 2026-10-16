@@ -57,8 +57,7 @@ def garantir_colunas_auditoria():
         )
     if 'atualizado_por_profissional_id' not in cols_prof:
         cursor.execute(
-            'ALTER TABLE profissionais ADD COLUMN'
-            ' atualizado_por_profissional_id INTEGER'
+            'ALTER TABLE profissionais ADD COLUMN atualizado_por_profissional_id INTEGER'
         )
     if 'created_at' not in cols_prof:
         cursor.execute('ALTER TABLE profissionais ADD COLUMN created_at TIMESTAMP')
@@ -71,13 +70,11 @@ def garantir_colunas_auditoria():
     ]
     if 'criado_por_profissional_id' not in cols_estab:
         cursor.execute(
-            'ALTER TABLE estabelecimentos ADD COLUMN'
-            ' criado_por_profissional_id INTEGER'
+            'ALTER TABLE estabelecimentos ADD COLUMN criado_por_profissional_id INTEGER'
         )
     if 'atualizado_por_profissional_id' not in cols_estab:
         cursor.execute(
-            'ALTER TABLE estabelecimentos ADD COLUMN'
-            ' atualizado_por_profissional_id INTEGER'
+            'ALTER TABLE estabelecimentos ADD COLUMN atualizado_por_profissional_id INTEGER'
         )
     if 'created_at' not in cols_estab:
         cursor.execute('ALTER TABLE estabelecimentos ADD COLUMN created_at TIMESTAMP')
@@ -194,11 +191,9 @@ def iniciar_sessao_profissional(profissional_id, vinculo_id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Busca dados do profissional
     cursor.execute('SELECT * FROM profissionais WHERE id = ?', (profissional_id,))
     prof = cursor.fetchone()
 
-    # Busca o vínculo específico escolhido (Unidade + CBO)
     cursor.execute("""
         SELECT pu.id AS vinculo_id, e.id AS estabelecimento_id, e.nome AS estabelecimento_nome, 
                e.tipo AS estabelecimento_tipo, c.id AS cbo_id, c.codigo AS cbo_codigo, c.ocupacao AS cbo_ocupacao,
@@ -214,13 +209,11 @@ def iniciar_sessao_profissional(profissional_id, vinculo_id):
         conn.close()
         return False
 
-    # Conta o total de unidades ativas do profissional para saber se exibe "Trocar acesso"
     total_unidades = cursor.execute("""
         SELECT COUNT(*) FROM profissional_unidades 
         WHERE profissional_id = ? AND ativo = 1
     """, (profissional_id,)).fetchone()[0]
 
-    # Busca o último acesso anterior para exibir no menu dropdown
     ultimo_acg = cursor.execute("""
         SELECT data_acesso FROM historico_acessos 
         WHERE profissional_id = ? 
@@ -229,7 +222,6 @@ def iniciar_sessao_profissional(profissional_id, vinculo_id):
     
     ultimo_acesso_str = ultimo_acg['data_acesso'] if ultimo_acg else 'Primeiro acesso'
 
-    # Registra o acesso atual no histórico
     ip_cliente = request.remote_addr
     cursor.execute("""
         INSERT INTO historico_acessos (profissional_id, estabelecimento_id, cbo_id, ip_address)
@@ -238,14 +230,12 @@ def iniciar_sessao_profissional(profissional_id, vinculo_id):
     conn.commit()
     conn.close()
 
-    # Configura as variáveis de sessão
     session['usuario_id'] = prof['id']
     session['nome'] = prof['nome']
     session['perfil'] = prof['perfil']
     session['permite_terceirizadas'] = prof['permite_terceirizadas']
     session['registro_profissional'] = prof['registro_profissional'] or ''
     
-    # Dados específicos do vínculo ativo
     session['vinculo_id'] = vinculo['vinculo_id']
     session['estabelecimento'] = vinculo['estabelecimento_nome']
     session['estabelecimento_id'] = vinculo['estabelecimento_id']
@@ -296,7 +286,6 @@ def login():
         if profissional and check_password_hash(profissional['senha_hash'], senha):
             profissional_id = profissional['id']
             
-            # Busca todas as unidades/vínculos ativos do profissional
             cursor.execute("""
                 SELECT pu.id AS vinculo_id, e.nome AS estabelecimento_nome, c.ocupacao AS cbo_ocupacao, c.codigo AS cbo_codigo
                 FROM profissional_unidades pu
@@ -312,12 +301,10 @@ def login():
                 return render_template('login.html', campanhas=campanhas)
 
             if len(vinculos) == 1:
-                # Se tem apenas 1 vínculo, loga direto
                 iniciar_sessao_profissional(profissional_id, vinculos[0]['vinculo_id'])
                 flash('Login efetuado com sucesso!', 'success')
                 return redirect(url_for('dashboard'))
             else:
-                # Se tem múltiplos vínculos, guarda na sessão temporária e manda para a tela de escolha (Imagem 1)
                 session['pre_auth_profissional_id'] = profissional_id
                 return redirect(url_for('selecionar_unidade'))
         else:
@@ -346,7 +333,6 @@ def selecionar_unidade():
         else:
             flash('Vínculo inválido ou não autorizado.', 'danger')
 
-    # Busca os dados do profissional e seus vínculos para exibir nos cards (Imagem 1)
     cursor.execute('SELECT nome FROM profissionais WHERE id = ?', (profissional_id,))
     prof = cursor.fetchone()
 
@@ -361,6 +347,13 @@ def selecionar_unidade():
     conn.close()
 
     return render_template('selecionar_unidade.html', nome_profissional=prof['nome'] if prof else '', vinculos=vinculos)
+
+
+@app.route('/trocar-unidade', methods=['GET'])
+@login_required
+def trocar_unidade():
+    session['pre_auth_profissional_id'] = session.get('usuario_id')
+    return redirect(url_for('selecionar_unidade'))
 
 
 @app.route('/logout')
@@ -382,13 +375,8 @@ def dashboard():
             ' nome ASC'
         ).fetchall()
     ]
-    cids = [
-        dict(row)
-        for row in cursor.execute(
-            'SELECT id, codigo, descricao, versao FROM cids ORDER BY versao DESC,'
-            ' codigo ASC'
-        ).fetchall()
-    ]
+    # Removido o carregamento em massa de 12 mil CIDs para evitar travamento da tela
+    cids = [] 
     cbos = [
         dict(row)
         for row in cursor.execute(
@@ -403,6 +391,31 @@ def dashboard():
         cids=cids,
         cbos=cbos,
     )
+
+
+# --- API DE BUSCA DINÂMICA DE CIDS (AUTOCOMPLETE / AJAX) ---
+@app.route('/api/cids/buscar', methods=['GET'])
+@login_required
+def api_buscar_cids():
+    termo = request.args.get('q', '').strip()
+    if len(termo) < 2:
+        return jsonify({'sucesso': True, 'dados': []})
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    query = """
+        SELECT id, codigo, descricao, versao 
+        FROM cids 
+        WHERE codigo LIKE ? OR descricao LIKE ?
+        ORDER BY versao DESC, codigo ASC
+        LIMIT 30
+    """
+    termo_like = f'%{termo}%'
+    cursor.execute(query, (termo_like, termo_like))
+    resultados = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return jsonify({'sucesso': True, 'dados': resultados})
 
 
 # --- API DE BUSCA DE PACIENTE COM PAGINAÇÃO (50 REGISTROS) ---
@@ -453,7 +466,9 @@ def buscar_paciente():
     )
 
     query = """
-        SELECT DISTINCT u.*, 
+        SELECT DISTINCT u.id, u.numero_prontuario, u.nome, u.cpf, u.cartao_sus, 
+               u.data_nascimento, u.sexo, u.nome_mae, u.telefone_principal, 
+               u.telefone_recado, u.unidade_referencia_id, u.created_at, u.updated_at, 
                e.nome AS unidade_referencia_nome,
                p_criou.nome AS criado_por_nome,
                p_at.nome AS atualizado_por_nome
@@ -814,15 +829,30 @@ def guias_fluxo():
     return render_template('guias_fluxo.html', guias=guias)
 
 
+# ==========================================
+# GESTÃO DE PROFISSIONAIS (COM PAGINAÇÃO 15 POR PÁGINA)
+# ==========================================
+# --- GESTÃO DE PROFISSIONAIS (COM PAGINAÇÃO 15 POR PÁGINA) ---
 @app.route('/admin/profissionais', methods=['GET'])
 @login_required
 @nivel_i_required
 def listar_profissionais():
     conn = get_db_connection()
     cursor = conn.cursor()
-    profissionais = [
-        dict(row)
-        for row in cursor.execute("""
+
+    page = int(request.args.get('page', 1))
+    per_page = 15
+    offset = (page - 1) * per_page
+
+    cursor.execute('SELECT COUNT(*) FROM profissionais')
+    total_registros = cursor.fetchone()[0]
+    total_paginas = (
+        (total_registros + per_page - 1) // per_page
+        if total_registros > 0
+        else 1
+    )
+
+    profissionais_raw = cursor.execute("""
         SELECT p.*, 
                p_criou.nome AS criado_por_nome,
                p_at.nome AS atualizado_por_nome
@@ -830,28 +860,53 @@ def listar_profissionais():
         LEFT JOIN profissionais p_criou ON p.criado_por_profissional_id = p_criou.id
         LEFT JOIN profissionais p_at ON p.atualizado_por_profissional_id = p_at.id
         ORDER BY p.nome ASC
-    """).fetchall()
-    ]
+        LIMIT ? OFFSET ?
+    """, (per_page, offset)).fetchall()
+
+    profissionais = []
+    for p in profissionais_raw:
+        prof_dict = dict(p)
+        
+        vinculos_raw = cursor.execute("""
+            SELECT pu.id AS vinculo_id, pu.estabelecimento_id, pu.cbo_id,
+                   e.nome AS estabelecimento_nome, c.ocupacao AS cbo_ocupacao, c.sigla_conselho AS cbo_conselho
+            FROM profissional_unidades pu
+            JOIN estabelecimentos e ON pu.estabelecimento_id = e.id
+            JOIN cbos c ON pu.cbo_id = c.id
+            WHERE pu.profissional_id = ? AND pu.ativo = 1
+        """, (prof_dict['id'],)).fetchall()
+        
+        prof_dict['vinculos'] = [dict(v) for v in vinculos_raw]
+        
+        if prof_dict['vinculos']:
+            prof_dict['estabelecimento_nome'] = ", ".join([v['estabelecimento_nome'] for v in prof_dict['vinculos']])
+            prof_dict['cbo_ocupacao'] = ", ".join([v['cbo_ocupacao'] for v in prof_dict['vinculos']])
+            prof_dict['cbo_conselho'] = prof_dict['vinculos'][0]['cbo_conselho']
+        else:
+            prof_dict['estabelecimento_nome'] = "Não informada"
+            prof_dict['cbo_ocupacao'] = "Não informada"
+            prof_dict['cbo_conselho'] = "-"
+            
+        profissionais.append(prof_dict)
+
     cbos = [
         dict(row)
-        for row in cursor.execute(
-            'SELECT id, codigo, ocupacao, sigla_conselho FROM cbos ORDER BY'
-            ' ocupacao ASC'
-        ).fetchall()
+        for row in cursor.execute('SELECT id, codigo, ocupacao, sigla_conselho FROM cbos ORDER BY ocupacao ASC').fetchall()
     ]
     estabelecimentos = [
         dict(row)
-        for row in cursor.execute(
-            'SELECT id, nome FROM estabelecimentos WHERE ativo = 1 ORDER BY nome'
-            ' ASC'
-        ).fetchall()
+        for row in cursor.execute('SELECT id, nome FROM estabelecimentos WHERE ativo = 1 ORDER BY nome ASC').fetchall()
     ]
     conn.close()
+    
     return render_template(
         'admin_profissionais.html',
         profissionais=profissionais,
         cbos=cbos,
         estabelecimentos=estabelecimentos,
+        pagina_atual=page,
+        total_paginas=total_paginas,
+        total_registros=total_registros,
     )
 
 
@@ -869,8 +924,7 @@ def salvar_profissional():
         qtd_letras = sum(1 for c in senha if c.isalpha())
         if len(senha) != 8 or qtd_letras < 3:
             flash(
-                'Erro: A senha deve ter exatamente 8 caracteres e conter pelo menos 3'
-                ' letras.',
+                'Erro: A senha deve ter exatamente 8 caracteres e conter pelo menos 3 letras.',
                 'danger',
             )
             return redirect(url_for('listar_profissionais'))
@@ -882,6 +936,9 @@ def salvar_profissional():
     )
     ativo = 1 if request.form.get('ativo', '1') == '1' else 0
     usuario_logado_id = session.get('usuario_id')
+
+    estabelecimento_ids = request.form.getlist('estabelecimento_ids[]')
+    cbo_ids = request.form.getlist('cbo_ids[]')
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -908,7 +965,7 @@ def salvar_profissional():
                         ativo,
                         usuario_logado_id,
                         profissional_id,
-                    ),
+                    )
                 )
             else:
                 cursor.execute(
@@ -929,13 +986,32 @@ def salvar_profissional():
                         ativo,
                         usuario_logado_id,
                         profissional_id,
-                    ),
+                    )
                 )
+            
+            cursor.execute('UPDATE profissional_unidades SET ativo = 0 WHERE profissional_id = ?', (profissional_id,))
+            
+            for est_id, cbo_id in zip(estabelecimento_ids, cbo_ids):
+                if est_id and cbo_id:
+                    vinculo_existente = cursor.execute("""
+                        SELECT id FROM profissional_unidades 
+                        WHERE profissional_id = ? AND estabelecimento_id = ? AND cbo_id = ?
+                    """, (profissional_id, est_id, cbo_id)).fetchone()
+                    
+                    if vinculo_existente:
+                        cursor.execute('UPDATE profissional_unidades SET ativo = 1 WHERE id = ?', (vinculo_existente['id'],))
+                    else:
+                        cursor.execute("""
+                            INSERT INTO profissional_unidades (profissional_id, estabelecimento_id, cbo_id, ativo)
+                            VALUES (?, ?, ?, 1)
+                        """, (profissional_id, est_id, cbo_id))
+
             flash('Profissional atualizado com sucesso!', 'success')
         else:
             if not senha:
                 flash('Erro: A senha é obrigatória.', 'danger')
                 return redirect(url_for('listar_profissionais'))
+            
             senha_hash = generate_password_hash(senha)
             cursor.execute(
                 """
@@ -945,7 +1021,7 @@ def salvar_profissional():
                     criado_por_profissional_id, atualizado_por_profissional_id, created_at, updated_at
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-            """,
+                """,
                 (
                     nome,
                     cpf,
@@ -959,7 +1035,18 @@ def salvar_profissional():
                     usuario_logado_id,
                 ),
             )
+            
+            profissional_id = cursor.execute('SELECT last_insert_rowid()').fetchone()[0]
+
+            for est_id, cbo_id in zip(estabelecimento_ids, cbo_ids):
+                if est_id and cbo_id:
+                    cursor.execute("""
+                        INSERT INTO profissional_unidades (profissional_id, estabelecimento_id, cbo_id, ativo)
+                        VALUES (?, ?, ?, 1)
+                    """, (profissional_id, est_id, cbo_id))
+
             flash('Profissional cadastrado com sucesso!', 'success')
+            
         conn.commit()
     except sqlite3.IntegrityError:
         conn.rollback()
@@ -970,7 +1057,6 @@ def salvar_profissional():
     finally:
         conn.close()
     return redirect(url_for('listar_profissionais'))
-
 
 @app.route('/admin/estabelecimentos', methods=['GET'])
 @login_required
@@ -1082,22 +1168,48 @@ def relatorios():
         total_pacientes = cursor.execute('SELECT COUNT(*) FROM usuarios').fetchone()[0]
 
     query_status = 'SELECT status, COUNT(*) AS quantidade FROM lista_espera WHERE 1=1'
-    query_unidade = """
+    
+    if unidade_filtro:
+        query_unidade = """
+            SELECT 
+                p.nome AS profissional_nome,
+                c.ocupacao AS profissional_cbo,
+                SUM(CASE WHEN le.status = 'Aguardando' THEN 1 ELSE 0 END) AS aguardando,
+                SUM(CASE WHEN le.status = 'Em Atendimento' THEN 1 ELSE 0 END) AS em_atendimento,
+                SUM(CASE WHEN le.status = 'Atendido / Finalizado' THEN 1 ELSE 0 END) AS atendido,
+                SUM(CASE WHEN le.status = 'Cancelado / Desistência' THEN 1 ELSE 0 END) AS cancelado,
+                COUNT(le.id) AS total
+            FROM lista_espera le
+            LEFT JOIN profissionais p ON le.profissional_triagem_id = p.id
+            LEFT JOIN profissional_unidades pu ON pu.profissional_id = p.id AND pu.estabelecimento_id = le.unidade_solicitante_id
+            LEFT JOIN cbos c ON pu.cbo_id = c.id
+            WHERE le.unidade_solicitante_id = ?
+        """
+    else:
+        query_unidade = """
+            SELECT 
+                e.nome AS unidade,
+                SUM(CASE WHEN le.status = 'Aguardando' THEN 1 ELSE 0 END) AS aguardando,
+                SUM(CASE WHEN le.status = 'Em Atendimento' THEN 1 ELSE 0 END) AS em_atendimento,
+                SUM(CASE WHEN le.status = 'Atendido / Finalizado' THEN 1 ELSE 0 END) AS atendido,
+                SUM(CASE WHEN le.status = 'Cancelado / Desistência' THEN 1 ELSE 0 END) AS cancelado,
+                SUM(CASE WHEN le.status = 'Ajuste de Faixa Etária' THEN 1 ELSE 0 END) AS ajuste_faixa,
+                COUNT(le.id) AS total
+            FROM estabelecimentos e
+            LEFT JOIN lista_espera le ON le.unidade_solicitante_id = e.id
+        """
+
+    query_modalidade = """
         SELECT 
-            e.nome AS unidade,
-            SUM(CASE WHEN le.status = 'Aguardando' THEN 1 ELSE 0 END) AS aguardando,
-            SUM(CASE WHEN le.status = 'Em Atendimento' THEN 1 ELSE 0 END) AS em_atendimento,
-            SUM(CASE WHEN le.status = 'Atendido / Finalizado' THEN 1 ELSE 0 END) AS atendido,
-            SUM(CASE WHEN le.status = 'Cancelado / Desistência' THEN 1 ELSE 0 END) AS cancelado,
-            SUM(CASE WHEN le.status = 'Ajuste de Faixa Etária' THEN 1 ELSE 0 END) AS ajuste_faixa,
-            COUNT(le.id) AS total
-        FROM estabelecimentos e
-        LEFT JOIN lista_espera le ON le.unidade_solicitante_id = e.id
+            modalidade_atendimento,
+            SUM(CASE WHEN strftime('%Y', data_entrada) = '2023' THEN 1 ELSE 0 END) AS ano_2023,
+            SUM(CASE WHEN strftime('%Y', data_entrada) = '2024' THEN 1 ELSE 0 END) AS ano_2024,
+            SUM(CASE WHEN strftime('%Y', data_entrada) = '2025' THEN 1 ELSE 0 END) AS ano_2025,
+            SUM(CASE WHEN strftime('%Y', data_entrada) = '2026' THEN 1 ELSE 0 END) AS ano_2026,
+            COUNT(*) AS quantidade 
+        FROM lista_espera 
+        WHERE 1=1
     """
-    query_modalidade = (
-        'SELECT modalidade_atendimento, COUNT(*) AS quantidade FROM lista_espera'
-        ' WHERE 1=1'
-    )
 
     params = []
     params_unidade = []
@@ -1105,18 +1217,20 @@ def relatorios():
     if data_inicio and data_fim:
         query_status += ' AND data_entrada BETWEEN ? AND ?'
         query_modalidade += ' AND data_entrada BETWEEN ? AND ?'
-        query_unidade += (
-            ' AND (le.data_entrada BETWEEN ? AND ? OR le.data_entrada IS NULL)'
-        )
+        if unidade_filtro:
+            query_unidade += ' AND le.data_entrada BETWEEN ? AND ?'
+        else:
+            query_unidade += (
+                ' AND (le.data_entrada BETWEEN ? AND ? OR le.data_entrada IS NULL)'
+            )
         params.extend([data_inicio, data_fim + ' 23:59:59'])
         params_unidade.extend([data_inicio, data_fim + ' 23:59:59'])
 
     if unidade_filtro:
         query_status += ' AND unidade_solicitante_id = ?'
         query_modalidade += ' AND unidade_solicitante_id = ?'
-        query_unidade += ' AND e.id = ?'
         params.append(unidade_filtro)
-        params_unidade.append(unidade_filtro)
+        params_unidade.insert(0, unidade_filtro)
     else:
         query_unidade += ' WHERE e.ativo = 1'
 
@@ -1128,7 +1242,12 @@ def relatorios():
         params_unidade.append(modalidade_filtro)
 
     query_status += ' GROUP BY status'
-    query_unidade += ' GROUP BY e.id, e.nome ORDER BY total DESC'
+    
+    if unidade_filtro:
+        query_unidade += ' GROUP BY p.id, p.nome, c.ocupacao ORDER BY total DESC'
+    else:
+        query_unidade += ' GROUP BY e.id, e.nome ORDER BY total DESC'
+
     query_modalidade += ' GROUP BY modalidade_atendimento ORDER BY quantidade DESC'
 
     cursor.execute(query_status, params)
@@ -1199,28 +1318,28 @@ def api_relatorios_mapa():
     conn.close()
 
     coordenadas_fixas = {
-        '192 - RESGATE': [-23.5320, -47.1350],
+        '192 - RESGATE': [-23.519083, -47.141246],
         'CENTRAL DE REGULACAO': [-23.5320, -47.1335],
-        'CANGUERA': [-23.6042, -47.1633],
+        'CANGUERA': [-23.605284, -47.164590],
         'CAPS II': [-23.5300, -47.1320],
-        'CAPS II-AD': [-23.5312, -47.1350],
-        'CARMO': [-23.5360, -47.1400],
-        'CENTRAL - ESPECIALIDADES': [-23.5318, -47.1345],
-        'CENTRAL - IRIS BARIONI': [-23.5340, -47.1360],
-        'CENTRO DE SAUDE II': [-23.5320, -47.1335],
-        'DEPARTAMENTO DE SAUDE': [-23.5505, -47.1260],
-        'FARMACIA CENTRAL': [-23.5300, -47.1320],
-        'GOIANA': [-23.5450, -47.1050],
-        'GUACU': [-23.5180, -47.1250],
-        'HOSPITAL SANTA CASA': [-23.5295, -47.1415],
-        'MAYLASKY': [-23.5561, -47.0900],
-        'MAYLASKY-ESPECIALIDADES': [-23.5570, -47.0905],
-        'SABOO': [-23.4747, -47.1626],
-        'SAO JOAO NOVO': [-23.5395, -47.2140],
-        'SISO': [-23.5315, -47.1350],
-        'TABOAO': [-23.5500, -47.1250],
-        'VILA NOVA': [-23.5240, -47.1430],
-        'VILLAGGIO EMILIA': [-23.5450, -47.1500],
+        'CAPS II-AD': [-23.536013, -47.137850],
+        'CARMO': [-23.627480, -47.094070],
+        'CENTRAL - ESPECIALIDADES': [-23.538167, -47.139515],
+        'CENTRAL - IRIS BARIONI': [-23.532277, -47.137233],
+        'CENTRO DE SAUDE II': [-23.529892, -47.132510],
+        'DEPARTAMENTO DE SAUDE': [-23.541973, -47.129337],
+        'FARMACIA CENTRAL': [-23.529892, -47.132510],
+        'GOIANA': [-23.554126, -47.147340],            
+        'GUACU': [-23.519083, -47.141246],
+        'HOSPITAL SANTA CASA': [-23.537575, -47.138604],
+        'MAYLASKY': [-23.557459, -47.090049],
+        'MAYLASKY-ESPECIALIDADES': [-23.558604, -47.093887],
+        'SABOO': [-23.465941, -47.155775],
+        'SAO JOAO NOVO': [-23.540390, -47.036600],      
+        'SISO': [-23.532137, -47.137198],
+        'TABOAO': [-23.545165, -47.123766],
+        'VILA NOVA': [-23.523544, -47.154396],
+        'VILLAGGIO EMILIA': [-23.548436, -47.131466],
     }
 
     resultado_final = []
@@ -1297,10 +1416,11 @@ def salvar_assiduidade_config():
 @nivel_i_required
 def listar_cids():
     conn = get_db_connection()
+    # Limita a listagem inicial da tela administrativa de CIDs para não travar o navegador
     cids = [
         dict(row)
         for row in conn.execute(
-            'SELECT * FROM cids ORDER BY versao DESC, codigo ASC'
+            'SELECT * FROM cids ORDER BY versao DESC, codigo ASC LIMIT 100'
         ).fetchall()
     ]
     conn.close()
@@ -1728,6 +1848,8 @@ def ver_lista_espera():
     cpf_filtro = request.args.get('cpf', '').strip()
     modalidade_filtro = request.args.get('modalidade', '').strip()
     status_filtro = request.args.get('status_filtro', 'ativos').strip()
+    data_inicio = request.args.get('data_inicio', '').strip()
+    data_fim = request.args.get('data_fim', '').strip()
 
     page = int(request.args.get('page', 1))
     per_page = 50
@@ -1749,6 +1871,14 @@ def ver_lista_espera():
         if modalidade_filtro:
             query_base_where += ' AND le.modalidade_atendimento = ?'
             params.append(modalidade_filtro)
+
+        if data_inicio:
+            query_base_where += ' AND le.data_entrada >= ?'
+            params.append(data_inicio + ' 00:00:00')
+
+        if data_fim:
+            query_base_where += ' AND le.data_entrada <= ?'
+            params.append(data_fim + ' 23:59:59')
 
         if status_filtro == 'ativos':
             query_base_where += (
@@ -1778,7 +1908,7 @@ def ver_lista_espera():
         query_lista = (
             """
         SELECT 
-            le.*,
+            le.,
             u.nome AS paciente_nome,
             u.cpf AS paciente_cpf,
             u.cartao_sus AS paciente_sus,
@@ -1814,7 +1944,6 @@ def ver_lista_espera():
         for row in raw_atendimentos:
             item = dict(row)
 
-            # 1. Cálculo da idade e verificação de faixa etária para solicitações ativas
             idade = calcular_idade(item.get('paciente_data_nascimento'))
             item['idade_atual'] = idade
 
@@ -1839,17 +1968,14 @@ def ver_lista_espera():
             item['alerta_faixa_etaria'] = alerta_faixa
             item['sugestao_modalidade'] = sugestao_modalidade
 
-            # Define o status visual exibido na tabela
             if alerta_faixa:
                 item['status_exibicao'] = 'Ajuste de Faixa Etária'
             else:
                 item['status_exibicao'] = status_atual
 
-            # Se o filtro específico foi "Ajuste de Faixa Etária", removemos quem não tem alerta
             if status_filtro == 'Ajuste de Faixa Etária' and not alerta_faixa:
                 continue
 
-            # 2. Posição na fila
             if status_atual == 'Aguardando' and not alerta_faixa:
                 cursor.execute(
                     """
@@ -1888,12 +2014,8 @@ def ver_lista_espera():
             ' nome ASC'
         ).fetchall()
     ]
-    cids = [
-        dict(row)
-        for row in cursor.execute(
-            'SELECT id, codigo, descricao, versao FROM cids ORDER BY codigo ASC'
-        ).fetchall()
-    ]
+    # Removido o carregamento de todos os CIDs na lista de espera
+    cids = [] 
     conn.close()
 
     return render_template(
