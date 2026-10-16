@@ -11,7 +11,6 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; }
         
-        /* Topbar padronizada */
         .topbar { background-color: #692A85; color: white; padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .topbar .title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
         .topbar .center-title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -60,6 +59,8 @@
         #listaCompletaContainer { display: none; margin-top: 20px; }
         .paciente-card-lista { background: white; padding: 16px 20px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #692A85; }
 
+        .cpf-copia { user-select: all; cursor: pointer; }
+
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content-custom { background: white; width: 100%; max-width: 650px; border-radius: 8px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; }
         .modal-header-custom { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 20px; }
@@ -82,7 +83,6 @@
 
         .footer { text-align: center; padding: 14px 0; font-size: 12px; color: #6b7280; background-color: #e5e7eb; margin-top: auto; }
         
-        /* Estilos para o Autocomplete de CIDs dinâmico */
         .autocomplete-container { position: relative; }
         .autocomplete-results { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #d1d5db; border-top: none; border-radius: 0 0 6px 6px; max-height: 200px; overflow-y: auto; z-index: 1050; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none; }
         .autocomplete-item { padding: 8px 12px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f3f4f6; color: #1f2937; }
@@ -91,7 +91,6 @@
 </head>
 <body>
 
-    <!-- Topbar Integrada com o Menu Dropdown Padronizado -->
     <div class="topbar">
         <div class="title">{{ session.get('estabelecimento', 'CAPS II — São Roque') }}</div>
         <div class="center-title">Gestão de Especialidades</div>
@@ -105,7 +104,6 @@
                 </div>
             </a>
 
-            <!-- Menu Flutuante (Dropdown) -->
             <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-2" aria-labelledby="userMenuDropdown" style="min-width: 280px;">
                 <li><h6 class="dropdown-header text-uppercase text-secondary fw-bold" style="font-size: 0.75rem;">Acesso Atual</h6></li>
                 <li><span class="dropdown-item-text py-1 text-dark small"><strong>CBO:</strong> {{ session.get('ocupacao') }} ({{ session.get('cbo_codigo') }})</span></li>
@@ -113,13 +111,11 @@
                 <li><span class="dropdown-item-text py-1 text-muted small">Último acesso: {{ session.get('ultimo_acesso', 'Agora') }}</span></li>
                 
                 <li><hr class="dropdown-divider my-2"></li>
-
                 <li>
                     <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalHistoricoAcessos">
                         <span class="me-2 text-secondary">📊</span> Ver histórico de acessos
                     </a>
                 </li>
-
                {% if session.get('total_unidades', 1) > 1 %}
                 <li>
                     <a class="dropdown-item rounded py-2 d-flex align-items-center text-primary fw-medium" href="{{ url_for('trocar_unidade') }}">
@@ -127,13 +123,11 @@
                     </a>
                 </li>
                 {% endif %}
-
                 <li>
                     <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalAlterarSenha">
                         <span class="me-2 text-secondary">🔑</span> Alterar senha
                     </a>
                 </li>
-
                 <li><hr class="dropdown-divider my-2"></li>
                 <li>
                     <a class="dropdown-item rounded py-2 d-flex align-items-center text-danger fw-semibold" href="{{ url_for('logout') }}">
@@ -256,7 +250,6 @@
                 <h3 id="tituloListaResultados" style="font-size: 16px; color: #374151; font-weight: 600; margin: 0;"></h3>
                 <div id="paginacaoTopo" style="display: flex; gap: 8px; align-items: center;"></div>
             </div>
-            
             <div id="cardsListaPacientes"></div>
         </div>
 
@@ -354,6 +347,11 @@
                 <button type="button" class="btn-close-custom" onclick="fecharModalLista()">&times;</button>
             </div>
 
+            <!-- Alerta de Erro Visual Harmonioso -->
+            <div id="msgErroModalFila" class="msg-erro-modal">
+                ⚠️ <span id="textoErroFila">Por favor, preencha corretamente todos os campos.</span>
+            </div>
+
             <div id="avisoDuplicidadeFila" style="display: none;" class="alert alert-warning">
                 <strong>Atenção:</strong> Este paciente já possui uma solicitação ativa (<span id="textoEspecialidadeAtiva" style="font-weight: 700;"></span>) aguardando ou em atendimento. Não é permitido duplicar a mesma modalidade.
             </div>
@@ -384,8 +382,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="observacao_atendimento">Observações de Triagem / Motivo do Encaminhamento (Opcional)</label>
-                    <textarea name="observacao_atendimento" rows="3" placeholder="Descreva brevemente a queixa ou justificativa do encaminhamento..."></textarea>
+                    <label for="observacao_atendimento">Observações de Triagem / Motivo do Encaminhamento *</label>
+                    <textarea id="observacao_atendimento" name="observacao_atendimento" rows="3" placeholder="Descreva detalhadamente a queixa ou justificativa do encaminhamento (Mínimo de 10 caracteres)..." required></textarea>
+                    <small style="color: #6b7280; font-size: 11px; margin-top: 4px; display: block;">Obrigatório preencher com uma justificativa válida e explicativa (mín. 10 caracteres).</small>
                 </div>
 
                 <div class="modal-footer-custom">
@@ -526,13 +525,12 @@
             {% endfor %}
         ];
 
-        // Função de Autocomplete Dinâmico para CIDs no modal de Lista de Espera
         function buscarCidsDinamico(termo) {
             clearTimeout(timeoutCid);
             const containerRes = document.getElementById('autocompleteResultadosCid');
             const inputHiddenId = document.getElementById('cid_id');
             
-            inputHiddenId.value = ""; // Limpa até selecionar um válido
+            inputHiddenId.value = "";
 
             if (termo.trim().length < 2) {
                 containerRes.style.display = 'none';
@@ -565,11 +563,9 @@
             const rotuloExibicao = `[${cid.versao}] ${cid.codigo} - ${cid.descricao}`;
             document.getElementById('input_cid_busca').value = rotuloExibicao;
             document.getElementById('cid_id').value = cid.id;
-            document.getElementById('autocompleteResultadosCid.').style.display = 'none';
             document.getElementById('autocompleteResultadosCid').style.display = 'none';
         }
 
-        // Fecha o autocomplete se clicar fora
         window.addEventListener('click', function(e) {
             if (!document.getElementById('input_cid_busca')?.contains(e.target)) {
                 const res = document.getElementById('autocompleteResultadosCid');
@@ -705,7 +701,7 @@
                             ${p.nome} <span style="font-size: 13px; font-weight: normal; color: #4b5563;">${idadeFormatada}</span>
                         </h4>
                         <p style="font-size: 13px; color: #4b5563; margin: 0;">
-                            CPF: <strong>${cpfExibido}</strong> &bull; Nasc: <strong>${dataNascBR}</strong> &bull; Prontuário: <strong style="color: #692A85;">${prontuarioFormatado}</strong>
+                            CPF: <strong class="cpf-copia" title="Clique para selecionar o CPF">${cpfExibido}</strong> &bull; Nasc: <strong>${dataNascBR}</strong> &bull; Prontuário: <strong style="color: #692A85;">${prontuarioFormatado}</strong>
                         </p>
                         <p style="font-size: 13px; color: #4b5563; margin: 0;">
                             Mãe: <strong>${nomeMae}</strong> &bull; SUS: <strong>${cnsExibido}</strong>
@@ -819,6 +815,9 @@
             document.getElementById('le_paciente_nome').value = pacienteAtual.nome;
             document.getElementById('input_cid_busca').value = '';
             document.getElementById('cid_id').value = '';
+            document.getElementById('observacao_atendimento').value = '';
+            document.getElementById('observacao_atendimento').classList.remove('campo-erro');
+            document.getElementById('msgErroModalFila').style.display = 'none';
             document.getElementById('avisoDuplicidadeFila').style.display = 'none';
             document.getElementById('btnSalvarFila').disabled = false;
             document.getElementById('btnSalvarFila').style.opacity = '1';
@@ -902,22 +901,48 @@
         }
 
         function validarInsercaoFila(e) {
+            e.preventDefault();
+
             const modalidade = document.getElementById('modalidade_atendimento').value;
             const cidId = document.getElementById('cid_id').value;
+            const observacaoEl = document.getElementById('observacao_atendimento');
+            const obsTexto = observacaoEl.value.trim();
+            const divErro = document.getElementById('msgErroModalFila');
+            const textoErro = document.getElementById('textoErroFila');
+
+            divErro.style.display = 'none';
+            observacaoEl.classList.remove('campo-erro');
             
+            if (!modalidade) {
+                textoErro.innerText = 'Por favor, selecione a modalidade de atendimento.';
+                divErro.style.display = 'block';
+                document.getElementById('modalidade_atendimento').focus();
+                return false;
+            }
+
             if (!cidId) {
-                alert('Por favor, selecione um CID válido a partir das opções sugeridas na digitação.');
+                textoErro.innerText = 'Por favor, selecione um CID válido a partir das opções sugeridas na digitação.';
+                divErro.style.display = 'block';
                 document.getElementById('input_cid_busca').focus();
-                e.preventDefault();
+                return false;
+            }
+
+            if (obsTexto.length < 10) {
+                textoErro.innerText = 'O campo "Observações de Triagem / Motivo do Encaminhamento" é obrigatório e precisa conter uma descrição válida (mínimo de 10 caracteres). Não é permitido preencher apenas com letras soltas ou espaços.';
+                divErro.style.display = 'block';
+                observacaoEl.focus();
+                observacaoEl.classList.add('campo-erro');
                 return false;
             }
 
             const itemAtivo = historicoPacienteCache.find(h => h.especialidade === modalidade && h.status === 'Em andamento');
             if (itemAtivo) {
-                alert('Operação bloqueada: O paciente já possui solicitação ativa para esta modalidade.');
-                e.preventDefault();
+                textoErro.innerText = 'Operação bloqueada: O paciente já possui solicitação ativa para esta modalidade.';
+                divErro.style.display = 'block';
                 return false;
             }
+
+            document.getElementById('formInserirFila').submit();
             return true;
         }
 
@@ -1002,12 +1027,21 @@
 
             if (lista.length > 0) {
                 lista.forEach(item => {
-                    let badgeStatus = '<span style="background: #e0e7ff; color: #3730a3; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;">Em andamento</span>';
-                    if (item.status === 'Concluída') badgeStatus = '<span style="background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;">Concluída</span>';
-                    if (item.status === 'Cancelada') badgeStatus = '<span style="background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;">Cancelada</span>';
+                    let corFundo = '#e0e7ff';
+                    let corTexto = '#3730a3';
+                    
+                    if (item.status === 'Concluída') {
+                        corFundo = '#d1fae5'; corTexto = '#065f46';
+                    } else if (item.status === 'Cancelada') {
+                        corFundo = '#fee2e2'; corTexto = '#991b1b';
+                    } else if (item.status === 'Aguardando') {
+                        corFundo = '#fef3c7'; corTexto = '#92400e';
+                    }
+
+                    let badgeStatus = `<span style="background: ${corFundo}; color: ${corTexto}; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;">${item.status || 'Ativo'}</span>`;
 
                     let badgeAssiduidade = '-';
-                    if (item.status === 'Em andamento') {
+                    if (item.status === 'Em andamento' || item.status === 'Aguardando' || item.status === 'Em atendimento') {
                         if (item.assiduo) {
                             badgeAssiduidade = `<span style="color: #059669; font-weight: 600;">✔ Assíduo (Dentro de ${item.meses_parametro}m)</span>`;
                         } else {

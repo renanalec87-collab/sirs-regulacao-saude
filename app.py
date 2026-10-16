@@ -375,7 +375,6 @@ def dashboard():
             ' nome ASC'
         ).fetchall()
     ]
-    # Removido o carregamento em massa de 12 mil CIDs para evitar travamento da tela
     cids = [] 
     cbos = [
         dict(row)
@@ -393,7 +392,6 @@ def dashboard():
     )
 
 
-# --- API DE BUSCA DINÂMICA DE CIDS (AUTOCOMPLETE / AJAX) ---
 @app.route('/api/cids/buscar', methods=['GET'])
 @login_required
 def api_buscar_cids():
@@ -418,7 +416,6 @@ def api_buscar_cids():
     return jsonify({'sucesso': True, 'dados': resultados})
 
 
-# --- API DE BUSCA DE PACIENTE COM PAGINAÇÃO (50 REGISTROS) ---
 @app.route('/api/paciente/buscar', methods=['GET'])
 @login_required
 def buscar_paciente():
@@ -655,15 +652,19 @@ def api_historico_paciente(usuario_id):
         )
         assiduo = False
 
-        status_fila = r['status']
+        status_fila = r['status'] or 'Aguardando'
+        
+        # Mapeia para os padrões visuais da tabela, mantendo o status real
         if status_fila in ['Atendido / Finalizado']:
             status_exibicao = 'Concluída'
         elif status_fila in ['Cancelado / Desistência']:
             status_exibicao = 'Cancelada'
+        elif status_fila in ['Em Atendimento']:
+            status_exibicao = 'Em Atendimento'
         else:
-            status_exibicao = 'Em andamento'
+            status_exibicao = 'Aguardando'
 
-        if status_exibicao == 'Em andamento' and r['data_atualizacao']:
+        if status_exibicao in ['Aguardando', 'Em Atendimento'] and r['data_atualizacao']:
             try:
                 dt_atualizacao = datetime.strptime(
                     r['data_atualizacao'].split('.')[0], '%Y-%m-%d %H:%M:%S'
@@ -829,10 +830,6 @@ def guias_fluxo():
     return render_template('guias_fluxo.html', guias=guias)
 
 
-# ==========================================
-# GESTÃO DE PROFISSIONAIS (COM PAGINAÇÃO 15 POR PÁGINA)
-# ==========================================
-# --- GESTÃO DE PROFISSIONAIS (COM PAGINAÇÃO 15 POR PÁGINA) ---
 @app.route('/admin/profissionais', methods=['GET'])
 @login_required
 @nivel_i_required
@@ -965,7 +962,7 @@ def salvar_profissional():
                         ativo,
                         usuario_logado_id,
                         profissional_id,
-                    )
+                    ),
                 )
             else:
                 cursor.execute(
@@ -986,7 +983,7 @@ def salvar_profissional():
                         ativo,
                         usuario_logado_id,
                         profissional_id,
-                    )
+                    ),
                 )
             
             cursor.execute('UPDATE profissional_unidades SET ativo = 0 WHERE profissional_id = ?', (profissional_id,))
@@ -1057,6 +1054,7 @@ def salvar_profissional():
     finally:
         conn.close()
     return redirect(url_for('listar_profissionais'))
+
 
 @app.route('/admin/estabelecimentos', methods=['GET'])
 @login_required
@@ -1416,7 +1414,6 @@ def salvar_assiduidade_config():
 @nivel_i_required
 def listar_cids():
     conn = get_db_connection()
-    # Limita a listagem inicial da tela administrativa de CIDs para não travar o navegador
     cids = [
         dict(row)
         for row in conn.execute(
@@ -1837,7 +1834,6 @@ def excluir_anexo_pdf(anexo_id):
     return redirect(url_for('admin_guias'))
 
 
-# --- ROTA DE LISTA DE ESPERA COM PAGINAÇÃO E RADAR DE FAIXA ETÁRIA ---
 @app.route('/lista-espera')
 @login_required
 def ver_lista_espera():
@@ -1908,7 +1904,7 @@ def ver_lista_espera():
         query_lista = (
             """
         SELECT 
-            le.,
+            le.*,
             u.nome AS paciente_nome,
             u.cpf AS paciente_cpf,
             u.cartao_sus AS paciente_sus,
@@ -1919,20 +1915,14 @@ def ver_lista_espera():
             c.descricao AS cid_descricao,
             c.versao AS cid_versao,
             p_triagem.nome AS profissional_triagem_nome,
-            e_triagem.nome AS profissional_triagem_unidade,
-            p_atendimento.nome AS profissional_atualizacao_nome,
-            e_prof.nome AS profissional_atualizacao_unidade
+            p_atendimento.nome AS profissional_atualizacao_nome
         FROM lista_espera le
         JOIN usuarios u ON le.usuario_id = u.id
         JOIN estabelecimentos e ON le.unidade_solicitante_id = e.id
         LEFT JOIN cids c ON le.cid_id = c.id
         LEFT JOIN profissionais p_triagem ON le.profissional_triagem_id = p_triagem.id
-        LEFT JOIN profissional_unidades pu_triagem ON pu_triagem.profissional_id = p_triagem.id
-        LEFT JOIN estabelecimentos e_triagem ON pu_triagem.estabelecimento_id = e_triagem.id
         LEFT JOIN profissionais p_atendimento ON le.profissional_atendimento_id = p_atendimento.id
-        LEFT JOIN profissional_unidades pu_at ON pu_at.profissional_id = p_atendimento.id
-        LEFT JOIN estabelecimentos e_prof ON pu_at.estabelecimento_id = e_prof.id
-    """
+        """
             + query_base_where
             + ' ORDER BY le.data_entrada ASC'
         )
@@ -2014,7 +2004,6 @@ def ver_lista_espera():
             ' nome ASC'
         ).fetchall()
     ]
-    # Removido o carregamento de todos os CIDs na lista de espera
     cids = [] 
     conn.close()
 
