@@ -1,0 +1,223 @@
+{% set perfil = session.get('perfil') %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurações do Sistema — CAPS II</title>
+    <!-- Bootstrap 5 CSS para os Dropdowns e Modais do topo -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; }
+        
+        /* Topbar padronizada */
+        .topbar { background-color: #692A85; color: white; padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .topbar .title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
+        .topbar .center-title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* Barra de Navegação Horizontal Padronizada */
+        .navbar { background: white; border-bottom: 1px solid #e5e7eb; padding: 0 24px; display: flex; flex-direction: row; justify-content: flex-start; gap: 28px; width: 100%; overflow-x: auto; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .navbar a { text-decoration: none; color: #4b5563; font-size: 14px; font-weight: 600; padding: 14px 0; border-bottom: 3px solid transparent; transition: all 0.2s; display: inline-block; flex-shrink: 0; }
+        .navbar a:hover, .navbar a.active { color: #692A85; border-bottom-color: #692A85; }
+
+        .container { flex: 1; padding: 30px 24px; max-width: 1200px; margin: 0 auto; width: 100%; }
+        .alert { padding: 12px 16px; border-radius: 6px; font-size: 14px; margin-bottom: 20px; }
+        .alert-success { background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .alert-danger { background-color: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        
+        .page-header { margin-bottom: 25px; }
+        .page-title { font-size: 20px; color: #1f2937; font-weight: 700; }
+        .page-sub { font-size: 14px; color: #6b7280; margin-top: 4px; }
+
+        .grid-config { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
+        .config-card { background: white; border-radius: 8px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-top: 4px solid #692A85; display: flex; flex-direction: column; justify-content: space-between; }
+        .config-card h3 { font-size: 18px; color: #1f2937; margin-bottom: 8px; font-weight: 700; }
+        .config-card p { font-size: 13.5px; color: #6b7280; margin-bottom: 20px; line-height: 1.5; }
+        .btn-config { background-color: #692A85; color: white; text-decoration: none; padding: 10px 16px; border-radius: 6px; font-size: 13.5px; font-weight: 600; text-align: center; transition: background 0.2s; }
+        .btn-config:hover { background-color: #521d6b; color: white; }
+
+        .footer { text-align: center; padding: 14px 0; font-size: 12px; color: #6b7280; background-color: #e5e7eb; margin-top: auto; border-top: 1px solid #d1d5db; }
+    </style>
+</head>
+<body>
+    
+    <!-- Topbar Integrada com o Menu Dropdown Padronizado -->
+    <div class="topbar">
+        <div class="title">{{ session.get('estabelecimento', 'CAPS II — São Roque') }}</div>
+        <div class="center-title">Gestão de Especialidades</div>
+        
+        <div class="dropdown">
+            <a class="dropdown-toggle text-white d-flex align-items-center text-decoration-none py-1 px-2 rounded" 
+               href="#" id="userMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(255,255,255,0.15);">
+                <div class="text-end me-2">
+                    <span class="d-block fw-semibold text-white" style="font-size: 0.9rem;">{{ session.get('nome') }}</span>
+                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('perfil') }}</small>
+                </div>
+            </a>
+
+            <!-- Menu Flutuante (Dropdown) -->
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-2" aria-labelledby="userMenuDropdown" style="min-width: 280px;">
+                <li><h6 class="dropdown-header text-uppercase text-secondary fw-bold" style="font-size: 0.75rem;">Acesso Atual</h6></li>
+                <li><span class="dropdown-item-text py-1 text-dark small"><strong>CBO:</strong> {{ session.get('ocupacao') }} ({{ session.get('cbo_codigo') }})</span></li>
+                <li><span class="dropdown-item-text py-1 text-dark small"><strong>Unidade:</strong> {{ session.get('estabelecimento') }}</span></li>
+                <li><span class="dropdown-item-text py-1 text-muted small">Último acesso: {{ session.get('ultimo_acesso', 'Agora') }}</span></li>
+                
+                <li><hr class="dropdown-divider my-2"></li>
+
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalHistoricoAcessos">
+                        <span class="me-2 text-secondary">📊</span> Ver histórico de acessos
+                    </a>
+                </li>
+
+                {% if session.get('total_unidades', 1) > 1 %}
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center text-primary fw-medium" href="{{ url_for('trocar_unidade') }}">
+                        <span class="me-2">🔄</span> Trocar unidade
+                    </a>
+                </li>
+                {% endif %}
+
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalAlterarSenha">
+                        <span class="me-2 text-secondary">🔑</span> Alterar senha
+                    </a>
+                </li>
+
+                <li><hr class="dropdown-divider my-2"></li>
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center text-danger fw-semibold" href="{{ url_for('logout') }}">
+                        <span class="me-2">🚪</span> Sair
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Barra de Navegação Horizontal Padronizada -->
+    <div class="navbar">
+        <a href="/dashboard">Consulta / Início</a>
+        <a href="/lista-espera">Lista de Espera & Regulação</a>
+        <a href="/guias-fluxo">Guias & Fluxos de Encaminhamento</a>
+        {% if perfil == 'NIVEL_I' %}
+            <a href="/admin/profissionais">Profissionais</a>
+            <a href="/admin/estabelecimentos">Unidades de Saúde</a>
+            <a href="/relatorios">Relatórios</a>
+            <a href="/admin/configuracoes" class="active">Configurações</a>
+        {% endif %}
+    </div>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <div class="page-header">
+            <div class="page-title">Configurações e Parâmetros do Sistema</div>
+            <div class="page-sub">Gerencie parâmetros globais, tabelas de apoio, fluxos e campanhas informativas.</div>
+        </div>
+
+        <div class="grid-config">
+            <!-- Card 1: Avisos e Campanhas (Novo) -->
+            <div class="config-card">
+                <div>
+                    <h3>Avisos e Campanhas de Login</h3>
+                    <p>Cadastre, ative ou desative os banners informativos e avisos que aparecem no carrossel dinâmico da tela de login por período.</p>
+                </div>
+                <a href="/admin/configuracoes/campanhas" class="btn-config">Gerenciar Avisos</a>
+            </div>
+
+            <!-- Card 2: Guias e Fluxos -->
+            <div class="config-card">
+                <div>
+                    <h3>Guias e Fluxos de Encaminhamento</h3>
+                    <p>Gerencie os manuais, guias institucionais e arquivos em PDF de orientação disponíveis na aba de fluxos.</p>
+                </div>
+                <a href="/admin/configuracoes/guias" class="btn-config">Gerenciar Guias</a>
+            </div>
+
+            <!-- Card 3: Parâmetros de Assiduidade -->
+            <div class="config-card">
+                <div>
+                    <h3>Parâmetros de Assiduidade</h3>
+                    <p>Configure o prazo limite em meses para inativar ou considerar o paciente não assíduo por modalidade/especialidade.</p>
+                </div>
+                <a href="/admin/configuracoes/assiduidade" class="btn-config">Configurar Assiduidade</a>
+            </div>
+
+            <!-- Card 4: Tabela de CIDs -->
+            <div class="config-card">
+                <div>
+                    <h3>Gestão de CIDs</h3>
+                    <p>Consulte, cadastre ou atualize os códigos da Classificação Internacional de Doenças utilizados nos encaminhamentos.</p>
+                </div>
+                <a href="/admin/configuracoes/cids" class="btn-config">Gerenciar CIDs</a>
+            </div>
+
+            <!-- Card 5: Especialidades / CBOs -->
+            <div class="config-card">
+                <div>
+                    <h3>Especialidades e CBOs</h3>
+                    <p>Gerencie as ocupações profissionais, faixas etárias permitidas e conselhos de classe aceitos pelo sistema.</p>
+                </div>
+                <a href="/admin/configuracoes/cbos" class="btn-config">Gerenciar CBOs</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: HISTÓRICO DE ACESSOS -->
+    <div class="modal fade" id="modalHistoricoAcessos" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content p-3">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold">📊 Histórico de Acessos Recentes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">Registros de conexões e seleções de unidades vinculadas ao seu perfil no sistema.</p>
+                    <div class="alert alert-light border small py-2 mb-0">
+                        Último registro capturado: <strong>{{ session.get('ultimo_acesso', 'Agora') }}</strong>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ALTERAR SENHA -->
+    <div class="modal fade" id="modalAlterarSenha" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content p-3">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold">🔑 Alterar Senha</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="/admin/profissionais/salvar">
+                        <div class="mb-3 text-start">
+                            <label class="form-label small fw-bold">Nova Senha (8 caracteres, mín. 3 letras):</label>
+                            <input type="password" name="senha" class="form-control form-control-sm" placeholder="Ex: abcd1234" required>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary btn-sm">Salvar Nova Senha</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">Intranet CAPS II — São Roque &copy; 2026.</div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

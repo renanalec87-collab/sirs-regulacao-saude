@@ -1,0 +1,196 @@
+{% set perfil = session.get('perfil') %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parâmetros de Assiduidade — CAPS II</title>
+    <!-- Bootstrap 5 CSS para os Dropdowns e Modais do topo -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; }
+        
+        /* Topbar padronizada */
+        .topbar { background-color: #692A85; color: white; padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .topbar .title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
+        .topbar .center-title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .navbar { background: white; border-bottom: 1px solid #e5e7eb; padding: 0 24px; display: flex; justify-content: flex-start; gap: 28px; overflow-x: auto; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .navbar a { text-decoration: none; color: #4b5563; font-size: 14px; font-weight: 600; padding: 14px 0; border-bottom: 3px solid transparent; transition: all 0.2s; display: inline-block; flex-shrink: 0; }
+        .navbar a:hover, .navbar a.active { color: #692A85; border-bottom-color: #692A85; }
+
+        .container { flex: 1; padding: 24px; max-width: 1000px; margin: 0 auto; width: 100%; }
+        .alert { padding: 12px 16px; border-radius: 6px; font-size: 14px; margin-bottom: 20px; }
+        .alert-success { background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .card { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-top: 4px solid #692A85; }
+        .header-title { font-size: 20px; color: #1f2937; margin-bottom: 6px; font-weight: 700; }
+        .header-sub { font-size: 14px; color: #6b7280; margin-bottom: 20px; }
+        .table-data { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
+        .table-data th, .table-data td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
+        .table-data th { background: #f9fafb; color: #374151; font-weight: 600; }
+        input[type="number"] { width: 90px; padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 14px; outline: none; background: white; }
+        input[type="number"]:focus { border-color: #692A85; box-shadow: 0 0 0 3px rgba(105, 42, 133, 0.1); }
+        .btn-save { background: #692A85; color: white; border: none; padding: 6px 14px; border-radius: 4px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .btn-save:hover { background: #521d6b; }
+        .footer { text-align: center; padding: 14px 0; font-size: 12px; color: #6b7280; background-color: #e5e7eb; margin-top: auto; border-top: 1px solid #d1d5db; }
+    </style>
+</head>
+<body>
+    <!-- Topbar Integrada com o Menu Dropdown Padronizado -->
+    <div class="topbar">
+        <div class="title">{{ session.get('estabelecimento', 'CAPS II — São Roque') }}</div>
+        <div class="center-title">Gestão de Especialidades</div>
+        
+        <div class="dropdown">
+            <a class="dropdown-toggle text-white d-flex align-items-center text-decoration-none py-1 px-2 rounded" 
+               href="#" id="userMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(255,255,255,0.15);">
+                <div class="text-end me-2">
+                    <span class="d-block fw-semibold text-white" style="font-size: 0.9rem;">{{ session.get('nome') }}</span>
+                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('perfil') }}</small>
+                </div>
+            </a>
+
+            <!-- Menu Flutuante (Dropdown) -->
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-2" aria-labelledby="userMenuDropdown" style="min-width: 280px;">
+                <li><h6 class="dropdown-header text-uppercase text-secondary fw-bold" style="font-size: 0.75rem;">Acesso Atual</h6></li>
+                <li><span class="dropdown-item-text py-1 text-dark small"><strong>CBO:</strong> {{ session.get('ocupacao') }} ({{ session.get('cbo_codigo') }})</span></li>
+                <li><span class="dropdown-item-text py-1 text-dark small"><strong>Unidade:</strong> {{ session.get('estabelecimento') }}</span></li>
+                <li><span class="dropdown-item-text py-1 text-muted small">Último acesso: {{ session.get('ultimo_acesso', 'Agora') }}</span></li>
+                
+                <li><hr class="dropdown-divider my-2"></li>
+
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalHistoricoAcessos">
+                        <span class="me-2 text-secondary">📊</span> Ver histórico de acessos
+                    </a>
+                </li>
+
+                {% if session.get('total_unidades', 1) > 1 %}
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center text-primary fw-medium" href="{{ url_for('trocar_unidade') }}">
+                        <span class="me-2">🔄</span> Trocar unidade
+                    </a>
+                </li>
+                {% endif %}
+                
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalAlterarSenha">
+                        <span class="me-2 text-secondary">🔑</span> Alterar senha
+                    </a>
+                </li>
+
+                <li><hr class="dropdown-divider my-2"></li>
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center text-danger fw-semibold" href="{{ url_for('logout') }}">
+                        <span class="me-2">🚪</span> Sair
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="navbar">
+        <a href="/dashboard">Consulta / Início</a>
+        <a href="/lista-espera">Lista de Espera & Regulação</a>
+        <a href="/guias-fluxo">Guias & Fluxos de Encaminhamento</a>
+        {% if session.get('perfil') == 'NIVEL_I' %}
+            <a href="/admin/profissionais">Profissionais</a>
+            <a href="/admin/estabelecimentos">Unidades de Saúde</a>
+            <a href="/relatorios">Relatórios</a>
+            <a href="/admin/configuracoes" class="active">Configurações</a>
+        {% endif %}
+    </div>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <div class="card">
+            <div class="header-title">Parâmetros de Assiduidade por Especialidade</div>
+            <div class="header-sub">Defina o limite de meses sem atendimento que descaracteriza a assiduidade do paciente na modalidade.</div>
+
+            <table class="table-data">
+                <thead>
+                    <tr>
+                        <th>Especialidade / Modalidade</th>
+                        <th style="width: 200px;">Parâmetro (Meses)</th>
+                        <th style="width: 120px; text-align: right;">Ação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cbo in cbos %}
+                    <tr>
+                        <td style="font-weight: 600; color: #1f2937; vertical-align: middle;">{{ cbo.ocupacao }}</td>
+                        <form method="POST" action="/admin/configuracoes/assiduidade/salvar">
+                            <input type="hidden" name="cbo_id" value="{{ cbo.id }}">
+                            <td style="vertical-align: middle;">
+                                <input type="number" name="meses_assiduidade" value="{{ cbo.meses_assiduidade if cbo.meses_assiduidade is not none else 6 }}" min="1" max="24" required> meses
+                            </td>
+                            <td style="text-align: right; vertical-align: middle;">
+                                <button type="submit" class="btn-save">Atualizar</button>
+                            </td>
+                        </form>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- MODAL: HISTÓRICO DE ACESSOS -->
+    <div class="modal fade" id="modalHistoricoAcessos" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content p-3">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold">📊 Histórico de Acessos Recentes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">Registros de conexões e seleções de unidades vinculadas ao seu perfil no sistema.</p>
+                    <div class="alert alert-light border small py-2 mb-0">
+                        Último registro capturado: <strong>{{ session.get('ultimo_acesso', 'Agora') }}</strong>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ALTERAR SENHA -->
+    <div class="modal fade" id="modalAlterarSenha" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content p-3">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold">🔑 Alterar Senha</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="/admin/profissionais/salvar">
+                        <div class="mb-3 text-start">
+                            <label class="form-label small fw-bold">Nova Senha (8 caracteres, mín. 3 letras):</label>
+                            <input type="password" name="senha" class="form-control form-control-sm" placeholder="Ex: abcd1234" required>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary btn-sm">Salvar Nova Senha</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">Intranet CAPS II — São Roque &copy; 2026.</div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

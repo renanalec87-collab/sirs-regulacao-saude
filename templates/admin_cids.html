@@ -1,0 +1,334 @@
+{% set perfil = session.get('perfil') %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intranet CAPS II - Gerenciamento de CIDs</title>
+    <!-- Bootstrap 5 CSS para os Dropdowns e Modais do topo -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; color: #1f2937; }
+        
+        /* Topbar padronizada */
+        .topbar { background-color: #692A85; color: white; padding: 10px 24px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .topbar .title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
+        .topbar .center-title { font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* Barra de Navegação Horizontal Padronizada */
+        .navbar { background: white; border-bottom: 1px solid #e5e7eb; padding: 0 24px; display: flex; flex-direction: row; justify-content: flex-start; gap: 28px; width: 100%; overflow-x: auto; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .navbar a { text-decoration: none; color: #4b5563; font-size: 14px; font-weight: 600; padding: 14px 0; border-bottom: 3px solid transparent; transition: all 0.2s; display: inline-block; flex-shrink: 0; }
+        .navbar a:hover, .navbar a.active { color: #692A85; border-bottom-color: #692A85; }
+
+        .container { flex: 1; padding: 24px; max-width: 1200px; margin: 0 auto; width: 100%; }
+
+        .search-card { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom: 24px; border-top: 4px solid #692A85; }
+        .search-card h2 { font-size: 18px; color: #1f2937; margin-bottom: 6px; }
+        .search-card p { font-size: 13px; color: #6b7280; margin-bottom: 18px; }
+
+        .search-box { display: flex; gap: 12px; }
+        .search-input { flex: 1; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 15px; outline: none; background: white; }
+        .search-input:focus { border-color: #692A85; box-shadow: 0 0 0 3px rgba(105, 42, 133, 0.1); }
+        .btn-search { background-color: #692A85; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .btn-search:hover { background-color: #521d6b; color: white; }
+        .btn-novo { background-color: #059669; color: white; border: none; padding: 12px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: background 0.2s; text-decoration: none; display: inline-block; }
+        .btn-novo:hover { background-color: #047857; color: white; }
+
+        .alert { padding: 12px 16px; border-radius: 6px; font-size: 14px; margin-bottom: 20px; }
+        .alert-success { background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .alert-danger { background-color: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+        .data-panel { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+        .table-data { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+        .table-data th { padding: 12px; border-bottom: 2px solid #e5e7eb; color: #4b5563; font-weight: 600; }
+        .table-data td { padding: 12px; border-bottom: 1px solid #f3f4f6; color: #1f2937; }
+
+        .badge-versao { background: #f3f4f6; border: 1px solid #d1d5db; color: #374151; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
+        .btn-edit { background-color: #d97706; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .btn-edit:hover { background-color: #b45309; }
+
+        /* Modal customizado */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content-custom { background: white; width: 100%; max-width: 500px; border-radius: 8px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); }
+        .modal-header-custom { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 20px; }
+        .modal-header-custom h3 { font-size: 18px; color: #111827; }
+        .btn-close-custom { background: none; border: none; font-size: 20px; cursor: pointer; color: #6b7280; }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; background: white; }
+
+        .modal-footer-custom { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 16px; }
+        .btn-cancel { background: #e5e7eb; color: #374151; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .btn-save { background: #692A85; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .btn-save:hover { background: #521d6b; }
+
+        .footer { text-align: center; padding: 14px 0; font-size: 12px; color: #6b7280; background-color: #e5e7eb; margin-top: auto; border-top: 1px solid #d1d5db; }
+    </style>
+</head>
+<body>
+
+    <!-- Topbar Integrada com o Menu Dropdown Padronizado -->
+    <div class="topbar">
+        <div class="title">{{ session.get('estabelecimento', 'CAPS II — São Roque') }}</div>
+        <div class="center-title">Gestão de Especialidades</div>
+        
+        <div class="dropdown">
+            <a class="dropdown-toggle text-white d-flex align-items-center text-decoration-none py-1 px-2 rounded" 
+               href="#" id="userMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(255,255,255,0.15);">
+                <div class="text-end me-2">
+                    <span class="d-block fw-semibold text-white" style="font-size: 0.9rem;">{{ session.get('nome') }}</span>
+                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('perfil') }}</small>
+                </div>
+            </a>
+
+            <!-- Menu Flutuante (Dropdown) -->
+            <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-2" aria-labelledby="userMenuDropdown" style="min-width: 280px;">
+                <li><h6 class="dropdown-header text-uppercase text-secondary fw-bold" style="font-size: 0.75rem;">Acesso Atual</h6></li>
+                <li><span class="dropdown-item-text py-1 text-dark small"><strong>CBO:</strong> {{ session.get('ocupacao') }} ({{ session.get('cbo_codigo') }})</span></li>
+                <li><span class="dropdown-item-text py-1 text-dark small"><strong>Unidade:</strong> {{ session.get('estabelecimento') }}</span></li>
+                <li><span class="dropdown-item-text py-1 text-muted small">Último acesso: {{ session.get('ultimo_acesso', 'Agora') }}</span></li>
+                
+                <li><hr class="dropdown-divider my-2"></li>
+
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalHistoricoAcessos">
+                        <span class="me-2 text-secondary">📊</span> Ver histórico de acessos
+                    </a>
+                </li>
+
+               {% if session.get('total_unidades', 1) > 1 %}
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center text-primary fw-medium" href="{{ url_for('trocar_unidade') }}">
+                        <span class="me-2">🔄</span> Trocar unidade
+                    </a>
+                </li>
+                {% endif %}
+
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalAlterarSenha">
+                        <span class="me-2 text-secondary">🔑</span> Alterar senha
+                    </a>
+                </li>
+
+                <li><hr class="dropdown-divider my-2"></li>
+                <li>
+                    <a class="dropdown-item rounded py-2 d-flex align-items-center text-danger fw-semibold" href="{{ url_for('logout') }}">
+                        <span class="me-2">🚪</span> Sair
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Barra de Navegação Horizontal Padronizada -->
+    <div class="navbar">
+        <a href="/dashboard">Consulta / Início</a>
+        <a href="/lista-espera">Lista de Espera & Regulação</a>
+        <a href="/guias-fluxo">Guias & Fluxos de Encaminhamento</a>
+        
+        {% if perfil == 'NIVEL_I' %}
+            <a href="/admin/profissionais">Profissionais</a>
+            <a href="/admin/estabelecimentos">Unidades de Saúde</a>
+            <a href="/relatorios">Relatórios</a>
+            <a href="/admin/configuracoes" class="active">Configurações</a>
+        {% endif %}
+    </div>
+
+    <div class="container">
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <div class="search-card">
+            <h2>Pesquisar Diagnóstico / CID</h2>
+            <p>Digite pelo menos 2 caracteres (ex: F32, 6A02 ou depressivos) para consultar no banco de dados.</p>
+            <div class="search-box">
+                <input type="text" id="inputFiltroCid" class="search-input" placeholder="Digite o código ou descrição para buscar..." onkeyup="pesquisarCidsDinamico()">
+                <button type="button" class="btn-search" onclick="pesquisarCidsDinamico()">Pesquisar</button>
+                <button type="button" class="btn-novo" onclick="prepararModalNovo()">+ Novo CID</button>
+            </div>
+        </div>
+
+        <div class="data-panel">
+            <table class="table-data" id="tabelaCids">
+                <thead>
+                    <tr>
+                        <th style="width: 120px;">Versão</th>
+                        <th style="width: 150px;">Código</th>
+                        <th>Descrição do Diagnóstico</th>
+                        <th style="text-align: right; width: 100px;">Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoTabelaCids">
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-4">Utilize o campo acima para pesquisar CIDs na base de dados.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- MODAL CID -->
+    <div id="modalCid" class="modal-overlay">
+        <div class="modal-content-custom">
+            <div class="modal-header-custom">
+                <h3 id="modalTitulo">Cadastrar Novo CID</h3>
+                <button class="btn-close-custom" onclick="fecharModal()">&times;</button>
+            </div>
+            <form action="{{ url_for('salvar_cid') }}" method="POST">
+                <input type="hidden" name="id" id="cid_id">
+                <div class="form-group">
+                    <label>Versão da CID *</label>
+                    <select name="versao" id="cid_versao" required onchange="atualizarPlaceholderCodigo()">
+                        <option value="CID-10">CID-10</option>
+                        <option value="CID-11">CID-11</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Código *</label>
+                    <input type="text" name="codigo" id="cid_codigo" placeholder="Ex: F32" required>
+                </div>
+                <div class="form-group">
+                    <label>Descrição do Diagnóstico *</label>
+                    <input type="text" name="descricao" id="cid_descricao" placeholder="Ex: Episódios depressivos" required>
+                </div>
+                <div class="modal-footer-custom">
+                    <button type="button" class="btn-cancel" onclick="fecharModal()">Cancelar</button>
+                    <button type="submit" class="btn-save">Salvar CID</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: HISTÓRICO DE ACESSOS -->
+    <div class="modal fade" id="modalHistoricoAcessos" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content p-3">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold">📊 Histórico de Acessos Recentes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">Registros de conexões e seleções de unidades vinculadas ao seu perfil no sistema.</p>
+                    <div class="alert alert-light border small py-2 mb-0">
+                        Último registro capturado: <strong>{{ session.get('ultimo_acesso', 'Agora') }}</strong>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Fechar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ALTERAR SENHA -->
+    <div class="modal fade" id="modalAlterarSenha" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content p-3">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold">🔑 Alterar Senha</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="/admin/profissionais/salvar">
+                        <div class="mb-3 text-start">
+                            <label class="form-label small fw-bold">Nova Senha (8 caracteres, mín. 3 letras):</label>
+                            <input type="password" name="senha" class="form-control form-control-sm" placeholder="Ex: abcd1234" required>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary btn-sm">Salvar Nova Senha</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">Intranet CAPS II — São Roque &copy; 2026.</div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Função de busca dinâmica via AJAX acoplada à nova API otimizada
+        function pesquisarCidsDinamico() {
+            const termo = document.getElementById('inputFiltroCid').value.trim();
+            const tbody = document.getElementById('corpoTabelaCids');
+
+            if (termo.length < 2) {
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">Digite pelo menos 2 caracteres para iniciar a pesquisa.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-secondary py-4">A pesquisar CIDs na base de dados...</td></tr>`;
+
+            fetch(`/api/cids/buscar?q=${encodeURIComponent(termo)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.sucesso && data.dados.length > 0) {
+                        let html = '';
+                        data.dados.forEach(cid => {
+                            html += `
+                                <tr>
+                                    <td><span class="badge-versao">${cid.versao}</span></td>
+                                    <td><code>${cid.codigo}</code></td>
+                                    <td><strong>${cid.descricao}</strong></td>
+                                    <td style="text-align: right;">
+                                        <button class="btn-edit" onclick='editarCid(${JSON.stringify(cid)})'>Editar</button>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                        tbody.innerHTML = html;
+                    } else {
+                        tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-4">Nenhum CID encontrado com o termo "${termo}".</td></tr>`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro na requisição:', error);
+                    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4">Erro ao realizar a busca. Tente novamente.</td></tr>`;
+                });
+        }
+
+        function prepararModalNovo() {
+            document.getElementById('modalTitulo').innerText = "Cadastrar Novo CID";
+            document.getElementById('cid_id').value = "";
+            document.getElementById('cid_versao').value = "CID-10";
+            document.getElementById('cid_codigo').value = "";
+            document.getElementById('cid_descricao').value = "";
+            atualizarPlaceholderCodigo();
+            document.getElementById('modalCid').style.display = 'flex';
+        }
+
+        function editarCid(cid) {
+            document.getElementById('modalTitulo').innerText = "Editar CID";
+            document.getElementById('cid_id').value = cid.id;
+            document.getElementById('cid_versao').value = cid.versao || "CID-10";
+            document.getElementById('cid_codigo').value = cid.codigo || "";
+            document.getElementById('cid_descricao').value = cid.descricao || "";
+            document.getElementById('modalCid').style.display = 'flex';
+        }
+
+        function fecharModal() {
+            document.getElementById('modalCid').style.display = 'none';
+        }
+
+        function atualizarPlaceholderCodigo() {
+            const versao = document.getElementById('cid_versao').value;
+            const inputCodigo = document.getElementById('cid_codigo');
+            if (versao === 'CID-10') {
+                inputCodigo.placeholder = 'Ex: F32';
+            } else {
+                inputCodigo.placeholder = 'Ex: 6A02';
+            }
+        }
+    </script>
+</body>
+</html>
