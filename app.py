@@ -42,7 +42,7 @@ def get_db_connection():
     return conn
 
 
-# --- GARANTE AS COLUNAS DE AUDITORIA NAS TABELAS ---
+# --- GARANTE AS COLUNAS DE AUDITORIA E CONFIGURAÇÕES NAS TABELAS ---
 def garantir_colunas_auditoria():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -80,6 +80,25 @@ def garantir_colunas_auditoria():
         cursor.execute('ALTER TABLE estabelecimentos ADD COLUMN created_at TIMESTAMP')
     if 'updated_at' not in cols_estab:
         cursor.execute('ALTER TABLE estabelecimentos ADD COLUMN updated_at TIMESTAMP')
+
+    cols_cbos = [
+        col['name']
+        for col in cursor.execute('PRAGMA table_info(cbos)').fetchall()
+    ]
+    if 'ativa' not in cols_cbos:
+        cursor.execute('ALTER TABLE cbos ADD COLUMN ativa INTEGER DEFAULT 1')
+    if 'gera_lista_espera' not in cols_cbos:
+        cursor.execute(
+            'ALTER TABLE cbos ADD COLUMN gera_lista_espera INTEGER DEFAULT 1'
+        )
+    if 'meses_assiduidade' not in cols_cbos:
+        cursor.execute(
+            'ALTER TABLE cbos ADD COLUMN meses_assiduidade INTEGER DEFAULT 6'
+        )
+    if 'idade_minima' not in cols_cbos:
+        cursor.execute('ALTER TABLE cbos ADD COLUMN idade_minima INTEGER')
+    if 'idade_maxima' not in cols_cbos:
+        cursor.execute('ALTER TABLE cbos ADD COLUMN idade_maxima INTEGER')
 
     conn.commit()
     conn.close()
@@ -362,27 +381,28 @@ def logout():
     flash('Sessão encerrada com sucesso.', 'info')
     return redirect(url_for('login'))
 
-
 @app.route('/dashboard')
 @login_required
 def dashboard():
     conn = get_db_connection()
     cursor = conn.cursor()
+    
     estabelecimentos = [
         dict(row)
         for row in cursor.execute(
-            'SELECT id, nome, tipo FROM estabelecimentos WHERE ativo = 1 ORDER BY'
-            ' nome ASC'
+            'SELECT id, nome, tipo FROM estabelecimentos WHERE ativo = 1 ORDER BY nome ASC'
         ).fetchall()
     ]
+    
     cids = [] 
+    
     cbos = [
         dict(row)
         for row in cursor.execute(
-            'SELECT id, ocupacao, idade_minima, idade_maxima FROM cbos ORDER BY'
-            ' ocupacao ASC'
+            'SELECT id, ocupacao, idade_minima, idade_maxima FROM cbos WHERE ativa = 1 AND gera_lista_espera = 1 ORDER BY ocupacao ASC'
         ).fetchall()
     ]
+    
     conn.close()
     return render_template(
         'dashboard.html',
@@ -390,7 +410,6 @@ def dashboard():
         cids=cids,
         cbos=cbos,
     )
-
 
 @app.route('/api/cids/buscar', methods=['GET'])
 @login_required
@@ -654,7 +673,6 @@ def api_historico_paciente(usuario_id):
 
         status_fila = r['status'] or 'Aguardando'
         
-        # Mapeia para os padrões visuais da tabela, mantendo o status real
         if status_fila in ['Atendido / Finalizado']:
             status_exibicao = 'Concluída'
         elif status_fila in ['Cancelado / Desistência']:
@@ -692,66 +710,83 @@ def api_historico_paciente(usuario_id):
 def inserir_lista_espera():
     usuario_id = request.form.get('usuario_id')
     modalidade = request.form.get('modalidade_atendimento')
-    unidade_solicitante_id = session.get(
-        'estabelecimento_id'
-    ) or request.form.get('unidade_solicitante_id')
-
+    
+    # Define a unidade solicitante: tenta pegar da sessão, senão do formulário, senão define uma padrão/global da rede ou do admin
+    unidade_solicitante_id = session.get('estabelecimento_id') or request.form.get('unidade_solicitante_id')
+    
     if not unidade_solicitante_id:
-        flash(
-            'Erro: Unidade solicitante não identificada na sessão. Faça login'
-            ' novamente.',
-            'danger',
-        )
-        return redirect(url_for('dashboard'))
-
-    cid_id = request.form.get('cid_id')
-    observacao = request.form.get('observacao_atendimento', '').strip()
+        conn_temp = get_db_connection()
+        # Se for admin sem unidade na sessão, pega a primeira unidade ativa do tipo CAPS ou Central como fallback de origem
+        fallback_est = conn_temp.execute("SELECT id FROM estabelecimentos WHERE ativo = 1 LIMIT 1").fetchone()
+        conn_temp.close()
+        if fallback_est:
+            unidade_solicitante_id = fallback_est['id']
+        else:
+            flash('Erro: Unidade solicitante não identificada. Faça login em uma unidade.', 'danger')
+            return redirect(url_for('dashboard'))
 
     conn = get_db_connection()
     cursor = conn.cursor()
+    
     try:
-        cursor.execute(
-            """
+        cbo_info = cursor.execute('SELECT id, ocupacao FROM cbos WHERE ocupacao = ?', (modalidade,)).fetchone()
+        
+        if cbo_info:
+            cbo_id = cbo_info['id']
+            autorizados = cursor.execute("""
+                SELECT p.nome, p.email, e.nome AS unidade_nome
+                FROM cbo_profissionais_autorizados cpa
+                JOIN profissionais p ON cpa.profissional_id = p.id
+                LEFT JOIN profissional_unidades pu ON pu.profissional_id = p.id AND pu.ativo = 1
+                LEFT JOIN estabelecimentos e ON pu.estabelecimento_id = e.id
+                WHERE cpa.cbo_id = ?
+            """, (cbo_id,)).fetchall()
+            
+            if autorizados:
+                cursor.execute('SELECT profissional_id FROM cbo_profissionais_autorizados WHERE cbo_id = ?', (cbo_id,))
+                ids_permitidos = [row[0] for row in cursor.fetchall()]
+                usuario_logado_id = session.get('usuario_id')
+                
+                if usuario_logado_id not in ids_permitidos:
+                    detalhes = "".join([f"<li class='mb-1'><strong>{a['nome']}</strong> <span style='color: #4b5563;'>(Unidade: {a['unidade_nome'] or 'Não informada'} | E-mail: {a['email']})</span></li>" for a in autorizados])
+                    
+                    mensagem_alerta = (
+                        f"<div class='d-flex align-start gap-3'>"
+                        f"  <div style='font-size: 28px; line-height: 1; color: #d97706;'>⚠️</div>"
+                        f"  <div style='flex: 1;'>"
+                        f"     <div style='font-size: 15px; font-weight: 700; color: #92400e; margin-bottom: 4px;'>Acesso Restrito: Fluxo Regulado para a Especialidade {modalidade}</div>"
+                        f"     <div style='color: #4b5563; font-size: 13px; margin-bottom: 8px;'>Somente o(s) seguinte(s) profissional(is) autorizado(s) pode(m) realizar inserções:</div>"
+                        f"     <ul class='mb-2 ps-3' style='font-size: 13px; color: #1f2937;'>{detalhes}</ul>"
+                        f"     <hr style='border: none; border-top: 1px solid #fde68a; margin: 8px 0;'>"
+                        f"     <small style='color: #78350f;'>Consulte o guia de fluxo desta especialidade na aba superior ou entre em contato com o responsável.</small>"
+                        f"  </div>"
+                        f"</div>"
+                    )
+                    conn.close()
+                    flash(mensagem_alerta, 'warning')
+                    return redirect(url_for('dashboard'))
+
+        cursor.execute("""
             SELECT id, data_entrada FROM lista_espera 
-            WHERE usuario_id = ? AND modalidade_atendimento = ? AND status IN ('Aguardando', 'Em Atendimento', 'Ajuste de Faixa Etária')
-        """,
-            (usuario_id, modalidade),
-        )
+            WHERE usuario_id = ? AND modalidade_atendimento = ? AND status IN ('Aguardando', 'Em Atendimento')
+        """, (usuario_id, modalidade))
         if cursor.fetchone():
-            flash(
-                'Bloqueio: Paciente já possui uma solicitação ativa para esta'
-                ' modalidade.',
-                'warning',
-            )
+            flash('Bloqueio: Paciente já possui uma solicitação ativa para esta modalidade.', 'warning')
             return redirect(url_for('dashboard'))
 
         nivel_servico = 'CAPS'
-        cursor.execute(
-            'SELECT tipo FROM estabelecimentos WHERE id = ?',
-            (unidade_solicitante_id,),
-        )
-        est_info = cursor.fetchone()
-        if est_info and est_info['tipo'] not in [
-            'CAPS',
-            'Centro de Atenção Psicossocial',
-        ]:
+        est_info = cursor.execute('SELECT tipo FROM estabelecimentos WHERE id = ?', (unidade_solicitante_id,)).fetchone()
+        if est_info and est_info['tipo'] not in ['CAPS', 'Centro de Atenção Psicossocial']:
             nivel_servico = 'AMBULATORIAL'
 
-        cursor.execute(
-            """
+        cid_id = request.form.get('cid_id')
+        observacao = request.form.get('observacao_atendimento', '').strip()
+
+        cursor.execute("""
             INSERT INTO lista_espera (usuario_id, profissional_triagem_id, modalidade_atendimento, nivel_servico, unidade_solicitante_id, cid_id, observacao_atendimento, status)
             VALUES (?, ?, ?, ?, ?, ?, ?, 'Aguardando')
-        """,
-            (
-                usuario_id,
-                session['usuario_id'],
-                modalidade,
-                nivel_servico,
-                unidade_solicitante_id,
-                cid_id or None,
-                observacao,
-            ),
-        )
+        """, (usuario_id, session['usuario_id'], modalidade, nivel_servico, unidade_solicitante_id, cid_id or None, observacao))
+        
         conn.commit()
         flash('Paciente inserido na Lista de Espera com sucesso!', 'success')
     except Exception as e:
@@ -761,26 +796,58 @@ def inserir_lista_espera():
         conn.close()
     return redirect(url_for('ver_lista_espera'))
 
-
 @app.route('/lista-espera/atualizar-status', methods=['POST'])
 @login_required
 @nivel_ii_required
 def atualizar_status_lista():
     lista_id = request.form.get('lista_id')
     novo_status = request.form.get('status')
+    
     conn = get_db_connection()
     cursor = conn.cursor()
-    row_atual = cursor.execute(
-        'SELECT status, nivel_servico FROM lista_espera WHERE id = ?', (lista_id,)
-    ).fetchone()
+    
+    row_atual = cursor.execute("""
+        SELECT le.status, le.nivel_servico, le.unidade_solicitante_id, e.nome AS unidade_nome
+        FROM lista_espera le
+        LEFT JOIN estabelecimentos e ON le.unidade_solicitante_id = e.id
+        WHERE le.id = ?
+    """, (lista_id,)).fetchone()
 
-    if row_atual and row_atual['status'] in [
-        'Atendido / Finalizado',
-        'Cancelado / Desistência',
-    ]:
+    if not row_atual:
+        conn.close()
+        flash('Erro: Registro não encontrado.', 'danger')
+        return redirect(url_for('ver_lista_espera'))
+
+    if row_atual['status'] in ['Atendido / Finalizado', 'Cancelado / Desistência']:
         conn.close()
         flash('Erro: Esta solicitação já foi encerrada.', 'danger')
         return redirect(url_for('ver_lista_espera'))
+
+    # TRAVA DE SEGURANÇA: Se estiver "Em Atendimento", apenas a mesma unidade ou Nível I pode alterar
+    unidade_atual_sessao = session.get('estabelecimento_id')
+    perfil_usuario = session.get('perfil')
+
+    if row_atual['status'] == 'Em Atendimento' and novo_status != 'Em Atendimento':
+        if str(row_atual['unidade_solicitante_id']) != str(unidade_atual_sessao) and perfil_usuario != 'NIVEL_I':
+            unidade_responsavel = row_atual['unidade_nome'] or 'outra unidade'
+            conn.close()
+            
+            mensagem_bloqueio = (
+                f"<div class='d-flex align-start gap-3'>"
+                f"  <div style='font-size: 28px; line-height: 1; color: #dc2626;'>🔒</div>"
+                f"  <div style='flex: 1;'>"
+                f"     <div style='font-size: 15px; font-weight: 700; color: #991b1b; margin-bottom: 4px;'>Ação Bloqueada: Paciente em Atendimento Simultâneo</div>"
+                f"     <div style='color: #4b5563; font-size: 13px; margin-bottom: 6px;'>"
+                f"         Este paciente encontra-se atualmente com o status <strong>'Em Atendimento'</strong> vinculado à unidade <strong>{unidade_responsavel}</strong>."
+                f"     </div>"
+                f"     <div style='color: #1f2937; font-size: 13px;'>"
+                f"         Por questões de segurança e integridade da regulação, apenas os profissionais lotados na unidade executora ou um gestor (Nível I) podem finalizar ou alterar o fluxo deste caso."
+                f"     </div>"
+                f"  </div>"
+                f"</div>"
+            )
+            flash(mensagem_bloqueio, 'danger')
+            return redirect(url_for('ver_lista_espera'))
 
     nivel_servico = (
         row_atual['nivel_servico']
@@ -811,7 +878,6 @@ def atualizar_status_lista():
     finally:
         conn.close()
     return redirect(url_for('ver_lista_espera'))
-
 
 @app.route('/guias-fluxo')
 @login_required
@@ -1469,10 +1535,26 @@ def salvar_cid():
 @nivel_i_required
 def listar_cbos():
     conn = get_db_connection()
-    cbos = [
-        dict(row)
-        for row in conn.execute('SELECT * FROM cbos ORDER BY ocupacao ASC').fetchall()
-    ]
+    cursor = conn.cursor()
+    
+    cbos_raw = cursor.execute('SELECT * FROM cbos ORDER BY ocupacao ASC').fetchall()
+    cbos = []
+    
+    for row in cbos_raw:
+        cbo_dict = dict(row)
+        
+        # Busca os detalhes dos profissionais autorizados para carregar corretamente no modal de edição
+        autorizados = cursor.execute("""
+            SELECT p.id, p.nome, p.cpf
+            FROM cbo_profissionais_autorizados cpa
+            JOIN profissionais p ON cpa.profissional_id = p.id
+            WHERE cpa.cbo_id = ?
+        """, (cbo_dict['id'],)).fetchall()
+        
+        cbo_dict['profissionais_detalhes'] = [dict(a) for a in autorizados]
+        cbo_dict['tem_restricao'] = len(cbo_dict['profissionais_detalhes']) > 0
+        cbos.append(cbo_dict)
+        
     conn.close()
     return render_template('admin_cbos.html', cbos=cbos)
 
@@ -1483,37 +1565,53 @@ def listar_cbos():
 def salvar_cbo():
     cbo_id = request.form.get('id')
     codigo = request.form.get('codigo', '').strip()
-    ocupacao = request.form.get('ocupacao', '').strip()
-    idade_minima = (
-        int(request.form.get('idade_minima'))
-        if request.form.get('idade_minima', '').isdigit()
-        else None
-    )
-    idade_maxima = (
-        int(request.form.get('idade_maxima'))
-        if request.form.get('idade_maxima', '').isdigit()
-        else None
-    )
+    ocupacao = padronizar_nome_proprio(request.form.get('ocupacao', ''))
+    
+    idade_minima = request.form.get('idade_minima')
+    idade_minima = int(idade_minima) if idade_minima != '' and idade_minima is not None else None
+
+    idade_maxima = request.form.get('idade_maxima')
+    idade_maxima = int(idade_maxima) if idade_maxima != '' and idade_maxima is not None else None
+
     conselho = request.form.get('conselho', '').strip().upper()
+    ativa = 1 if request.form.get('ativa') == '1' else 0
+    gera_lista_espera = 1 if request.form.get('gera_lista_espera') == '1' else 0
+    
+    # Captura a lista de IDs dos profissionais autorizados selecionados no modal
+    profissionais_autorizados = request.form.getlist('profissionais_autorizados')
 
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
         if cbo_id:
-            cursor.execute(
-                """UPDATE cbos SET codigo = ?, ocupacao = ?, profissao = ?,
-                idade_minima = ?, idade_maxima = ?, sigla_conselho = ? WHERE id = ?""",
-                (codigo, ocupacao, ocupacao, idade_minima, idade_maxima, conselho, cbo_id),
-            )
-            flash('Especialidade atualizada!', 'success')
+            cursor.execute("""
+                UPDATE cbos 
+                SET codigo = ?, ocupacao = ?, idade_minima = ?, idade_maxima = ?, sigla_conselho = ?, ativa = ?, gera_lista_espera = ?
+                WHERE id = ?
+            """, (codigo, ocupacao, idade_minima, idade_maxima, conselho or None, ativa, gera_lista_espera, cbo_id))
+            flash('Especialidade/CBO atualizada com sucesso!', 'success')
         else:
-            cursor.execute(
-                """INSERT INTO cbos (codigo, ocupacao, profissao, idade_minima,
-                idade_maxima, sigla_conselho) VALUES (?, ?, ?, ?, ?, ?)""",
-                (codigo, ocupacao, ocupacao, idade_minima, idade_maxima, conselho),
-            )
-            flash('Especialidade cadastrada!', 'success')
+            cursor.execute("""
+                INSERT INTO cbos (codigo, ocupacao, idade_minima, idade_maxima, sigla_conselho, ativa, gera_lista_espera, meses_assiduidade)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 6)
+            """, (codigo, ocupacao, idade_minima, idade_maxima, conselho or None, ativa, gera_lista_espera))
+            cbo_id = cursor.lastrowid
+            flash('Nova Especialidade/CBO cadastrada com sucesso!', 'success')
+
+        # Atualiza a tabela de restrições de profissionais:
+        cursor.execute("DELETE FROM cbo_profissionais_autorizados WHERE cbo_id = ?", (cbo_id,))
+        
+        for prof_id in profissionais_autorizados:
+            if prof_id:
+                cursor.execute("""
+                    INSERT INTO cbo_profissionais_autorizados (cbo_id, profissional_id)
+                    VALUES (?, ?)
+                """, (cbo_id, prof_id))
+
         conn.commit()
+    except Exception as e:
+        conn.rollback()
+        flash(f'Erro ao salvar Especialidade/CBO: {str(e)}', 'danger')
     finally:
         conn.close()
     return redirect(url_for('listar_cbos'))
@@ -1571,7 +1669,10 @@ def salvar_campanha():
     titulo = request.form.get('titulo', '').strip()
     data_inicio = request.form.get('data_inicio')
     data_fim = request.form.get('data_fim')
+    
+    # Captura o HTML formatado gerado pelo Summernote (negrito, listas, tabelas, etc.)
     descricao_texto = request.form.get('descricao_texto', '').strip()
+    
     ativo = 1 if request.form.get('ativo', '1') == '1' else 0
 
     conn = get_db_connection()
@@ -1833,6 +1934,30 @@ def excluir_anexo_pdf(anexo_id):
         conn.close()
     return redirect(url_for('admin_guias'))
 
+# --- API PARA BUSCAR PROFISSIONAIS NO AUTOCOMPLETE DE RESTRIÇÕES (Mín. 3 letras) ---
+@app.route('/api/buscar-profissionais', methods=['GET'])
+@login_required
+@nivel_i_required
+def api_buscar_profissionais():
+    termo = request.args.get('q', '').strip()
+    if len(termo) < 3:
+        return jsonify([])
+    
+    conn = get_db_connection()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    termo_like = f'%{termo}%'
+    cursor.execute("""
+        SELECT id, nome, cpf FROM profissionais 
+        WHERE ativo = 1 AND (nome LIKE ? OR cpf LIKE ?)
+        LIMIT 10
+    """, (termo_like, termo_like))
+    
+    profissionais = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    
+    return jsonify(profissionais)
 
 @app.route('/lista-espera')
 @login_required
@@ -1915,7 +2040,14 @@ def ver_lista_espera():
             c.descricao AS cid_descricao,
             c.versao AS cid_versao,
             p_triagem.nome AS profissional_triagem_nome,
-            p_atendimento.nome AS profissional_atualizacao_nome
+            p_atendimento.nome AS profissional_atualizacao_nome,
+            (
+                SELECT est.nome 
+                FROM profissional_unidades pu 
+                JOIN estabelecimentos est ON pu.estabelecimento_id = est.id 
+                WHERE pu.profissional_id = le.profissional_atendimento_id AND pu.ativo = 1 
+                LIMIT 1
+            ) AS profissional_atualizacao_unidade    
         FROM lista_espera le
         JOIN usuarios u ON le.usuario_id = u.id
         JOIN estabelecimentos e ON le.unidade_solicitante_id = e.id

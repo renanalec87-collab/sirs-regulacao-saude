@@ -30,7 +30,7 @@ def inicializar_banco():
         );
     """)
 
-    # 2. Tabela de CBOs / Especialidades
+    # 2. Tabela de CBOs / Especialidades (Atualizada com 'ativa' e 'gera_lista_espera')
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS cbos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -41,6 +41,8 @@ def inicializar_banco():
             idade_minima INTEGER,
             idade_maxima INTEGER,
             meses_assiduidade INTEGER DEFAULT 6,
+            ativa INTEGER DEFAULT 1,
+            gera_lista_espera INTEGER DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     """)
@@ -56,7 +58,7 @@ def inicializar_banco():
         );
     """)
 
-    # 4. Tabela de Profissionais (Removidos cbo_id e estabelecimento_id fixos)
+    # 4. Tabela de Profissionais
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS profissionais (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -75,7 +77,7 @@ def inicializar_banco():
         );
     """)
 
-    # 5. NOVA TABELA: Vínculos de Múltiplas Unidades e CBOs por Profissional
+    # 5. Vínculos de Múltiplas Unidades e CBOs por Profissional
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS profissional_unidades (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,7 +93,20 @@ def inicializar_banco():
         );
     """)
 
-    # 6. NOVA TABELA: Histórico de Acessos (Para exibir "Último acesso")
+    # 5.1 NOVA TABELA: Restrição de Profissionais Autorizados por CBO / Especialidade (Ex: Equoterapia)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS cbo_profissionais_autorizados (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            cbo_id INTEGER NOT NULL,
+            profissional_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (cbo_id) REFERENCES cbos(id) ON DELETE CASCADE,
+            FOREIGN KEY (profissional_id) REFERENCES profissionais(id) ON DELETE CASCADE,
+            UNIQUE(cbo_id, profissional_id)
+        );
+    """)
+
+    # 6. Tabela de Histórico de Acessos
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS historico_acessos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -226,22 +241,23 @@ def inicializar_banco():
         estabelecimentos_iniciais,
     )
 
-    # 2. Especialidades detalhadas com faixas etárias
+    # 2. Especialidades detalhadas (Adicionado exemplo de CBO administrativo com gera_lista_espera = 0)
     cbos_iniciais = [
-        ('225133', 'PSICOLOGIA INFANTIL', 'Psicólogo Infantil', 'CRP', 0, 9, 6),
-        ('225134', 'PSICOLOGIA ADOLESCENTE', 'Psicólogo Adolescente', 'CRP', 10, 17, 6),
-        ('225135', 'PSICOLOGIA ADULTO', 'Psicólogo Adulto', 'CRP', 18, 120, 6),
-        ('225136', 'PSIQUIATRIA INFANTIL', 'Médico Psiquiatra Infantil', 'CRM', 0, 17, 6),
-        ('225137', 'PSIQUIATRIA ADULTO', 'Médico Psiquiatra Adulto', 'CRM', 18, 120, 6),
-        ('223810', 'FONOAUDIOLOGIA INFANTIL', 'Fonoaudiólogo Infantil', 'CRF', 0, 17, 6),
-        ('223811', 'FONOAUDIOLOGIA ADULTO', 'Fonoaudiólogo Adulto', 'CRF', 18, 120, 6),
-        ('223905', 'TERAPIA OCUPACIONAL ADULTO', 'Terapeuta Ocupacional Adulto', 'CREFITO', 18, 120, 6),
-        ('223906', 'TERAPIA OCUPACIONAL INFANTIL', 'Terapeuta Ocupacional Infantil', 'CREFITO', 0, 17, 6),
+        ('225133', 'PSICOLOGIA INFANTIL', 'Psicólogo Infantil', 'CRP', 0, 9, 6, 1, 1),
+        ('225134', 'PSICOLOGIA ADOLESCENTE', 'Psicólogo Adolescente', 'CRP', 10, 17, 6, 1, 1),
+        ('225135', 'PSICOLOGIA ADULTO', 'Psicólogo Adulto', 'CRP', 18, 120, 6, 1, 1),
+        ('225136', 'PSIQUIATRIA INFANTIL', 'Médico Psiquiatra Infantil', 'CRM', 0, 17, 6, 1, 1),
+        ('225137', 'PSIQUIATRIA ADULTO', 'Médico Psiquiatra Adulto', 'CRM', 18, 120, 6, 1, 1),
+        ('223810', 'FONOAUDIOLOGIA INFANTIL', 'Fonoaudiólogo Infantil', 'CRF', 0, 17, 6, 1, 1),
+        ('223811', 'FONOAUDIOLOGIA ADULTO', 'Fonoaudiólogo Adulto', 'CRF', 18, 120, 6, 1, 1),
+        ('223905', 'TERAPIA OCUPACIONAL ADULTO', 'Terapeuta Ocupacional Adulto', 'CREFITO', 18, 120, 6, 1, 1),
+        ('223906', 'TERAPIA OCUPACIONAL INFANTIL', 'Terapeuta Ocupacional Infantil', 'CREFITO', 0, 17, 6, 1, 1),
+        ('411010', 'ASSISTENTE ADMINISTRATIVO', 'Assistente Administrativo', 'MTE', 18, 120, 6, 1, 0), # Exemplo que não gera fila
     ]
     cursor.executemany(
         """
-        INSERT INTO cbos (codigo, ocupacao, profissao, sigla_conselho, idade_minima, idade_maxima, meses_assiduidade) 
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO cbos (codigo, ocupacao, profissao, sigla_conselho, idade_minima, idade_maxima, meses_assiduidade, ativa, gera_lista_espera) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """,
         cbos_iniciais,
     )
@@ -338,7 +354,7 @@ def inicializar_banco():
     )
     profissional_id = cursor.lastrowid
 
-    # Vincula o admin padrão ao CAPS II-AD (id 3) com a Psicologia Adulto (id 3) por exemplo
+    # Vincula o admin padrão ao CAPS II-AD (id 3) com a Psicologia Adulto (id 3)
     cursor.execute(
         """
         INSERT INTO profissional_unidades (profissional_id, estabelecimento_id, cbo_id)
@@ -349,7 +365,7 @@ def inicializar_banco():
 
     conn.commit()
     conn.close()
-    print('Banco de dados atualizado com sucesso com suporte a múltiplos vínculos e histórico!')
+    print('Banco de dados atualizado com sucesso com suporte a status, lista de espera e restrições de CBO!')
 
 
 if __name__ == '__main__':

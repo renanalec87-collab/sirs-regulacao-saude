@@ -42,11 +42,15 @@
         .data-panel { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
         .table-data { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
         .table-data th { padding: 12px; border-bottom: 2px solid #e5e7eb; color: #4b5563; font-weight: 600; }
-        .table-data td { padding: 12px; border-bottom: 1px solid #f3f4f6; color: #1f2937; }
+        .table-data td { padding: 12px; border-bottom: 1px solid #f3f4f6; color: #1f2937; vertical-align: middle; }
 
         .badge-conselho { background: #f3f4f6; border: 1px solid #d1d5db; color: #374151; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; }
         .badge-idade { background: #faf5ff; border: 1px solid #e9d5ff; color: #692A85; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 600; white-space: nowrap; display: inline-block; }
         
+        .status-dot { height: 12px; width: 12px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: middle; }
+        .status-dot.green { background-color: #28a745; }
+        .status-dot.red { background-color: #dc3545; }
+
         .btn-edit { background-color: #d97706; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
         .btn-edit:hover { background-color: #b45309; }
 
@@ -55,16 +59,31 @@
 
         /* Modal customizado */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-content-custom { background: white; width: 100%; max-width: 500px; border-radius: 8px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); }
+        .modal-content-custom { background: white; width: 100%; max-width: 550px; border-radius: 8px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; }
         .modal-header-custom { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px; margin-bottom: 20px; }
         .modal-header-custom h3 { font-size: 18px; color: #111827; }
         .btn-close-custom { background: none; border: none; font-size: 20px; cursor: pointer; color: #6b7280; }
 
         .form-group { margin-bottom: 16px; }
         .form-group label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
-        .form-group input { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; background: white; }
+        .form-group input[type="text"], .form-group input[type="number"], .form-group select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; background: white; }
+        .form-group input:focus, .form-group select:focus { border-color: #692A85; box-shadow: 0 0 0 3px rgba(105, 42, 133, 0.1); }
         .form-row { display: flex; gap: 12px; }
         .form-row .form-group { flex: 1; }
+
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+        .checkbox-group input[type="checkbox"] { width: 18px; height: 18px; accent-color: #692A85; cursor: pointer; }
+        .checkbox-group label { margin-bottom: 0; cursor: pointer; font-weight: normal; color: #374151; }
+
+        /* Estilos do Autocomplete de Profissionais */
+        .autocomplete-container { position: relative; }
+        .autocomplete-results { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #d1d5db; border-radius: 0 0 6px 6px; max-height: 150px; overflow-y: auto; z-index: 1050; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .autocomplete-item { padding: 8px 12px; font-size: 13px; cursor: pointer; border-bottom: 1px solid #f3f4f6; }
+        .autocomplete-item:hover { background-color: #f3f4f6; color: #692A85; }
+
+        .tag-profissional { display: inline-flex; align-items: center; background: #faf5ff; border: 1px solid #e9d5ff; color: #692A85; padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: 500; margin-right: 6px; margin-bottom: 6px; }
+        .tag-profissional button { background: none; border: none; color: #9333ea; margin-left: 6px; font-weight: bold; cursor: pointer; font-size: 14px; }
+        .tag-profissional button:hover { color: #581c87; }
 
         .modal-footer-custom { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 16px; }
         .btn-cancel { background: #e5e7eb; color: #374151; border: none; padding: 10px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; }
@@ -76,7 +95,7 @@
 </head>
 <body>
 
-    <!-- Topbar Integrada com o Menu Dropdown Padronizado -->
+    <!-- Topbar -->
     <div class="topbar">
         <div class="title">{{ session.get('estabelecimento', 'CAPS II — São Roque') }}</div>
         <div class="center-title">Gestão de Especialidades</div>
@@ -89,36 +108,10 @@
                     <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('perfil') }}</small>
                 </div>
             </a>
-
-            <!-- Menu Flutuante (Dropdown) -->
             <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-2" aria-labelledby="userMenuDropdown" style="min-width: 280px;">
                 <li><h6 class="dropdown-header text-uppercase text-secondary fw-bold" style="font-size: 0.75rem;">Acesso Atual</h6></li>
                 <li><span class="dropdown-item-text py-1 text-dark small"><strong>CBO:</strong> {{ session.get('ocupacao') }} ({{ session.get('cbo_codigo') }})</span></li>
                 <li><span class="dropdown-item-text py-1 text-dark small"><strong>Unidade:</strong> {{ session.get('estabelecimento') }}</span></li>
-                <li><span class="dropdown-item-text py-1 text-muted small">Último acesso: {{ session.get('ultimo_acesso', 'Agora') }}</span></li>
-                
-                <li><hr class="dropdown-divider my-2"></li>
-
-                <li>
-                    <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalHistoricoAcessos">
-                        <span class="me-2 text-secondary">📊</span> Ver histórico de acessos
-                    </a>
-                </li>
-
-              {% if session.get('total_unidades', 1) > 1 %}
-                <li>
-                    <a class="dropdown-item rounded py-2 d-flex align-items-center text-primary fw-medium" href="{{ url_for('trocar_unidade') }}">
-                        <span class="me-2">🔄</span> Trocar unidade
-                    </a>
-                </li>
-                {% endif %}
-
-                <li>
-                    <a class="dropdown-item rounded py-2 d-flex align-items-center" href="#" data-bs-toggle="modal" data-bs-target="#modalAlterarSenha">
-                        <span class="me-2 text-secondary">🔑</span> Alterar senha
-                    </a>
-                </li>
-
                 <li><hr class="dropdown-divider my-2"></li>
                 <li>
                     <a class="dropdown-item rounded py-2 d-flex align-items-center text-danger fw-semibold" href="{{ url_for('logout') }}">
@@ -129,12 +122,11 @@
         </div>
     </div>
 
-    <!-- Barra de Navegação Horizontal Padronizada -->
+    <!-- Barra de Navegação -->
     <div class="navbar">
         <a href="/dashboard">Consulta / Início</a>
         <a href="/lista-espera">Lista de Espera & Regulação</a>
         <a href="/guias-fluxo">Guias & Fluxos de Encaminhamento</a>
-        
         {% if perfil == 'NIVEL_I' %}
             <a href="/admin/profissionais">Profissionais</a>
             <a href="/admin/estabelecimentos">Unidades de Saúde</a>
@@ -169,8 +161,10 @@
                     <tr>
                         <th style="width: 130px;">Código CBO</th>
                         <th>Nome da Ocupação / Especialidade</th>
-                        <th style="width: 210px;">Faixa Etária</th>
+                        <th style="width: 100px; text-align: center;">Restrições</th>
+                        <th style="width: 190px;">Faixa Etária</th>
                         <th style="width: 120px;">Conselho</th>
+                        <th style="width: 110px; text-align: center;">Status</th>
                         <th style="text-align: right; width: 160px;">Ação</th>
                     </tr>
                 </thead>
@@ -179,6 +173,13 @@
                     <tr>
                         <td><code>{{ cbo.codigo }}</code></td>
                         <td><strong>{{ cbo.ocupacao }}</strong></td>
+                        <td style="text-align: center;">
+                            {% if cbo.tem_restricao %}
+                                <span style="background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">SIM</span>
+                            {% else %}
+                                <span style="color: #9ca3af; font-size: 12px;">NÃO</span>
+                            {% endif %}
+                        </td>
                         <td>
                             {% if cbo.idade_minima is not none and cbo.idade_maxima is not none %}
                                 <span class="badge-idade">{{ cbo.idade_minima }} a {{ cbo.idade_maxima }} anos</span>
@@ -195,6 +196,13 @@
                                 <span class="badge-conselho">{{ cbo.sigla_conselho }}</span>
                             {% else %}
                                 <span style="color: #9ca3af; font-size: 12px;">Não aplicável</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: center;">
+                            {% if cbo.ativa == 1 %}
+                                <span class="status-dot green" title="Ativa"></span> Ativa
+                            {% else %}
+                                <span class="status-dot red" title="Inativa"></span> Inativa
                             {% endif %}
                         </td>
                         <td style="text-align: right;">
@@ -245,6 +253,37 @@
                     <label>Conselho de Classe (Sigla)</label>
                     <input type="text" name="conselho" id="cbo_conselho" placeholder="Ex: CRP, CRM">
                 </div>
+
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" name="ativa" id="cbo_ativa" value="1" checked>
+                        <label for="cbo_ativa"><strong>Especialidade Ativa</strong> (Permite uso e exibição)</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" name="gera_lista_espera" id="cbo_gera_lista_espera" value="1" checked>
+                        <label for="cbo_gera_lista_espera"><strong>Gera Lista de Espera</strong> (Exibe na fila de atendimento)</label>
+                    </div>
+                </div>
+
+                <!-- Restrição Operacional de Profissionais (Com busca por Nome/CPF) -->
+                <div class="form-group" style="background: #f9fafb; padding: 14px; border: 1px solid #e5e7eb; border-radius: 6px; margin-top: 12px;">
+                    <label style="margin-bottom: 4px; color: #4b5563;">Restrição Operacional (Profissionais Autorizados)</label>
+                    <p style="font-size: 11px; color: #6b7280; margin-bottom: 10px;">Busque pelo nome (mín. 3 letras) ou CPF do profissional para adicionar à lista de autorizados.</p>
+                    
+                    <div class="autocomplete-container d-flex gap-2 mb-2">
+                        <input type="text" id="buscaProfissional" class="search-input" placeholder="Digite o nome ou CPF..." autocomplete="off" onkeyup="buscarProfissionais(event)">
+                        <div id="autocompleteResults" class="autocomplete-results"></div>
+                    </div>
+
+                    <!-- Container onde ficam os profissionais já adicionados (geram os inputs hidden para o Flask) -->
+                    <div id="listaProfissionaisSelecionados" style="display: flex; flex-wrap: wrap; gap: 4px; min-height: 35px; padding-top: 6px;">
+                        <!-- Inseridos via JS -->
+                    </div>
+                </div>
+
                 <div class="modal-footer-custom">
                     <button type="button" class="btn-cancel" onclick="fecharModal()">Cancelar</button>
                     <button type="submit" class="btn-save">Salvar Especialidade</button>
@@ -253,56 +292,11 @@
         </div>
     </div>
 
-    <!-- MODAL: HISTÓRICO DE ACESSOS -->
-    <div class="modal fade" id="modalHistoricoAcessos" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content p-3">
-                <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold">📊 Histórico de Acessos Recentes</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted small">Registros de conexões e seleções de unidades vinculadas ao seu perfil no sistema.</p>
-                    <div class="alert alert-light border small py-2 mb-0">
-                        Último registro capturado: <strong>{{ session.get('ultimo_acesso', 'Agora') }}</strong>
-                    </div>
-                </div>
-                <div class="modal-footer border-top-0 pt-0">
-                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Fechar</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL: ALTERAR SENHA -->
-    <div class="modal fade" id="modalAlterarSenha" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content p-3">
-                <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold">🔑 Alterar Senha</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <form method="POST" action="/admin/profissionais/salvar">
-                        <div class="mb-3 text-start">
-                            <label class="form-label small fw-bold">Nova Senha (8 caracteres, mín. 3 letras):</label>
-                            <input type="password" name="senha" class="form-control form-control-sm" placeholder="Ex: abcd1234" required>
-                        </div>
-                        <div class="d-flex justify-content-end gap-2">
-                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                            <button type="submit" class="btn btn-primary btn-sm">Salvar Nova Senha</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="footer">Intranet CAPS II — São Roque &copy; 2026.</div>
-
-    <!-- Bootstrap 5 JS Bundle -->
+    <!-- Bootstrap JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        let profissionaisSelecionadosMap = new Map(); // Armazena ID -> {id, nome, cpf}
+
         function filtrarTabelaCbo() {
             const termo = document.getElementById('inputFiltroCbo').value.toLowerCase();
             const linhas = document.querySelectorAll('#tabelaCbos tbody tr');
@@ -320,6 +314,11 @@
             document.getElementById('cbo_idade_minima').value = "";
             document.getElementById('cbo_idade_maxima').value = "";
             document.getElementById('cbo_conselho').value = "CRP";
+            document.getElementById('cbo_ativa').checked = true;
+            document.getElementById('cbo_gera_lista_espera').checked = true;
+            
+            profissionaisSelecionadosMap.clear();
+            renderizarTagsProfissionais();
             document.getElementById('modalCbo').style.display = 'flex';
         }
 
@@ -331,12 +330,97 @@
             document.getElementById('cbo_idade_minima').value = (cbo.idade_minima !== null && cbo.idade_minima !== undefined) ? cbo.idade_minima : "";
             document.getElementById('cbo_idade_maxima').value = (cbo.idade_maxima !== null && cbo.idade_maxima !== undefined) ? cbo.idade_maxima : "";
             document.getElementById('cbo_conselho').value = cbo.sigla_conselho || "";
+            
+            document.getElementById('cbo_ativa').checked = (cbo.ativa === 1 || cbo.ativa === true);
+            document.getElementById('cbo_gera_lista_espera').checked = (cbo.gera_lista_espera === 1 || cbo.gera_lista_espera === true);
+            
+            profissionaisSelecionadosMap.clear();
+            // cbo.profissionais_detalhes deve conter [{id, nome, cpf}, ...] enviado pelo backend
+            const detalhes = cbo.profissionais_detalhes || [];
+            detalhes.forEach(p => {
+                profissionaisSelecionadosMap.set(p.id, p);
+            });
+            renderizarTagsProfissionais();
+            
             document.getElementById('modalCbo').style.display = 'flex';
         }
 
         function fecharModal() {
             document.getElementById('modalCbo').style.display = 'none';
+            document.getElementById('autocompleteResults').style.display = 'none';
         }
+
+        // Busca assíncrona por Nome (mín. 3 letras) ou CPF
+        function buscarProfissionais(event) {
+            const query = document.getElementById('buscaProfissional').value.trim();
+            const resultsDiv = document.getElementById('autocompleteResults');
+
+            if (query.length < 3) {
+                resultsDiv.style.display = 'none';
+                return;
+            }
+
+            fetch(`/api/buscar-profissionais?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    resultsDiv.innerHTML = '';
+                    if (data.length === 0) {
+                        resultsDiv.style.display = 'none';
+                        return;
+                    }
+
+                    data.forEach(prof => {
+                        // Não mostra se já estiver selecionado
+                        if (!profissionaisSelecionadosMap.has(prof.id)) {
+                            const item = document.createElement('div');
+                            item.className = 'autocomplete-item';
+                            item.innerHTML = `<strong>${prof.nome}</strong> <span style="color: #6b7280; font-size: 11px;">(CPF: ${prof.cpf})</span>`;
+                            item.onclick = () => adicionarProfissional(prof);
+                            resultsDiv.appendChild(item);
+                        }
+                    });
+
+                    resultsDiv.style.display = resultsDiv.children.length > 0 ? 'block' : 'none';
+                })
+                .catch(err => console.error('Erro na busca:', err));
+        }
+
+        function adicionarProfissional(prof) {
+            profissionaisSelecionadosMap.set(prof.id, prof);
+            document.getElementById('buscaProfissional').value = '';
+            document.getElementById('autocompleteResults').style.display = 'none';
+            renderizarTagsProfissionais();
+        }
+
+        function removerProfissional(id) {
+            profissionaisSelecionadosMap.delete(id);
+            renderizarTagsProfissionais();
+        }
+
+        function renderizarTagsProfissionais() {
+            const container = document.getElementById('listaProfissionaisSelecionados');
+            container.innerHTML = '';
+
+            if (profissionaisSelecionadosMap.size === 0) {
+                container.innerHTML = '<span style="color: #9ca3af; font-size: 12px; font-style: italic;">Nenhum profissional restrito selecionado (acesso livre).</span>';
+                return;
+            }
+
+            profissionaisSelecionadosMap.forEach((prof, id) => {
+                const tag = document.createElement('div');
+                tag.className = 'tag-profissional';
+                tag.innerHTML = `${prof.nome} <button type="button" onclick="removerProfissional(${id})" title="Remover">&times;</button>
+                                 <input type="hidden" name="profissionais_autorizados" value="${id}">`;
+                container.appendChild(tag);
+            });
+        }
+
+        // Fecha o autocomplete ao clicar fora
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.autocomplete-container')) {
+                document.getElementById('autocompleteResults').style.display = 'none';
+            }
+        });
     </script>
 </body>
 </html>

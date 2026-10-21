@@ -7,6 +7,8 @@
     <title>Avisos e Campanhas de Login — CAPS II</title>
     <!-- Bootstrap 5 CSS para os Dropdowns e Modais do topo -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Summernote CSS para o Editor de Texto Rico -->
+    <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; }
@@ -43,14 +45,13 @@
         
         /* Modal customizado */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-content-custom { background: white; width: 100%; max-width: 600px; border-radius: 8px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; }
+        .modal-content-custom { background: white; width: 100%; max-width: 750px; border-radius: 8px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; }
         .modal-header-custom { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 16px; }
         .btn-close-custom { background: none; border: none; font-size: 20px; cursor: pointer; color: #6b7280; }
         .form-group { margin-bottom: 15px; }
         .form-group label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
-        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; background: white; }
-        .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: #692A85; box-shadow: 0 0 0 3px rgba(105, 42, 133, 0.1); }
-        .form-group textarea { resize: vertical; min-height: 90px; }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; background: white; }
+        .form-group input:focus, .form-group select:focus { border-color: #692A85; box-shadow: 0 0 0 3px rgba(105, 42, 133, 0.1); }
         .modal-footer-custom { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 14px; }
         .btn-cancel { background: #e5e7eb; color: #374151; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; }
         .btn-save { background: #692A85; color: white; border: none; padding: 8px 18px; border-radius: 6px; font-weight: 600; cursor: pointer; }
@@ -75,7 +76,6 @@
                 </div>
             </a>
 
-            <!-- Menu Flutuante (Dropdown) -->
             <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-2" aria-labelledby="userMenuDropdown" style="min-width: 280px;">
                 <li><h6 class="dropdown-header text-uppercase text-secondary fw-bold" style="font-size: 0.75rem;">Acesso Atual</h6></li>
                 <li><span class="dropdown-item-text py-1 text-dark small"><strong>CBO:</strong> {{ session.get('ocupacao') }} ({{ session.get('cbo_codigo') }})</span></li>
@@ -152,7 +152,7 @@
                         <th style="width: 130px;">Início</th>
                         <th style="width: 130px;">Término</th>
                         <th style="width: 120px;">Status</th>
-                        <th style="width: 100px; text-align: right;">Ação</th>
+                        <th style="width: 150px; text-align: right;">Ação</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -168,7 +168,15 @@
                                 </span>
                             </td>
                             <td style="text-align: right; vertical-align: middle;">
-                                <button type="button" class="btn-edit" onclick="abrirModalEditar('{{ c.id }}', '{{ c.titulo }}', '{{ c.data_inicio }}', '{{ c.data_fim }}', '{{ c.ativo }}', `{{ c.descricao_texto | default('', true) }}`)">Editar</button>
+                                <div class="d-flex justify-content-end gap-1">
+                                    <!-- Botão de Pré-visualização -->
+                                    <button type="button" class="btn btn-sm btn-secondary" style="font-size: 13px; font-weight: 600; padding: 6px 10px;" 
+                                            onclick="abrirModalPreview('{{ c.titulo }}', `{{ c.descricao_texto | default('', true) | safe }}`, '{{ c.arquivo_path or '' }}')">
+                                        👁️ Ver
+                                    </button>
+                                    <!-- Botão Editar -->
+                                    <button type="button" class="btn-edit" onclick="abrirModalEditar('{{ c.id }}', '{{ c.titulo }}', '{{ c.data_inicio }}', '{{ c.data_fim }}', '{{ c.ativo }}', `{{ c.descricao_texto | default('', true) | safe }}`)">Editar</button>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
@@ -216,7 +224,8 @@
 
                 <div class="form-group">
                     <label>Texto Informativo Opcional (Exibido ao lado da imagem)</label>
-                    <textarea id="descricao_texto" name="descricao_texto" placeholder="Digite um texto descritivo opcional que aparecerá ao lado da imagem no carrossel... Se deixar em branco, apenas a imagem será exibida em destaque."></textarea>
+                    <!-- O Summernote vai transformar este textarea na barra de ferramentas rica -->
+                    <textarea id="descricao_texto" name="descricao_texto"></textarea>
                 </div>
 
                 <div class="form-group">
@@ -232,6 +241,42 @@
                     <button type="submit" class="btn-save">Salvar Campanha</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE PRÉ-VISUALIZAÇÃO DA CAMPANHA -->
+    <div class="modal fade" id="modalPreviewCampanha" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content border-0 shadow" style="border-top: 5px solid #692A85;">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title fw-bold text-dark" id="previewTituloCampanha">Título da Campanha</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 bg-white text-center">
+                    <p class="text-muted small mb-3">Simulação exata de como o aviso aparecerá no painel lateral da tela de login:</p>
+                    
+                    <div class="p-4 rounded border bg-light d-flex flex-column align-items-center justify-content-between" style="min-height: 350px;">
+                        <h3 id="previewTituloCard" style="color: #692A85; font-size: 19px; font-weight: 700; margin-bottom: 12px;">Título</h3>
+                        
+                        <div id="previewCorpoContainer" class="d-flex align-items-center justify-content-center gap-3 w-100 my-auto">
+                            <!-- Imagem -->
+                            <div id="previewImagemWrapper" style="display: none;">
+                                <img id="previewImg" src="" alt="Arte" style="max-height: 220px; max-width: 100%; object-fit: contain; border-radius: 6px;">
+                            </div>
+                            <!-- Texto Informativo Formatado -->
+                            <div id="previewTextBox" style="display: none; flex: 1; text-align: left; font-size: 14px; color: #374151; line-height: 1.55; background-color: #fdf8ff; border-left: 4px solid #692A85; padding: 15px; border-radius: 6px; max-height: 220px; overflow-y: auto;">
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <small class="text-muted">Prefeitura Municipal da Estância Turística de São Roque</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary btn-sm px-4" data-bs-dismiss="modal">Fechar Prévia</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -282,16 +327,35 @@
 
     <div class="footer">Intranet CAPS II — São Roque &copy; 2026.</div>
 
-    <!-- Bootstrap 5 JS Bundle -->
+    <!-- Scripts necessários para o Bootstrap e o Editor Summernote -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
+    
     <script>
+        // Inicializa o Summernote na caixa de texto ao carregar a página
+        $(document).ready(function() {$('#descricao_texto').summernote({
+                placeholder: 'Digite aqui o texto informativo opcional que aparecerá ao lado da imagem...',
+                tabsize: 2,
+                height: 150,
+                toolbar: [
+                    ['style', ['style']],
+                    ['font', ['bold', 'italic', 'underline', 'clear']],
+                    ['para', ['ul', 'ol', 'paragraph']],
+                    ['insert', ['link']],
+                    ['view', ['codeview']]
+                ],
+                lang: 'pt-BR'
+            });
+        });
+
         function abrirModalNovo() {
             document.getElementById('modalTitulo').innerText = 'Cadastrar Nova Campanha / Aviso';
             document.getElementById('campanha_id').value = '';
             document.getElementById('titulo').value = '';
             document.getElementById('data_inicio').value = '';
             document.getElementById('data_fim').value = '';
-            document.getElementById('descricao_texto').value = '';
+            $('#descricao_texto').summernote('code', '');
             document.getElementById('ativo').value = '1';
             document.getElementById('modalCampanha').style.display = 'flex';
         }
@@ -303,12 +367,39 @@
             document.getElementById('data_inicio').value = inicio;
             document.getElementById('data_fim').value = fim;
             document.getElementById('ativo').value = ativo;
-            document.getElementById('descricao_texto').value = descricao;
+            $('#descricao_texto').summernote('code', descricao);
             document.getElementById('modalCampanha').style.display = 'flex';
         }
 
         function fecharModal() {
             document.getElementById('modalCampanha').style.display = 'none';
+        }
+
+        function abrirModalPreview(titulo, descricaoHtml, arquivoPath) {
+            document.getElementById('previewTituloCampanha').innerText = "Prévia: " + titulo;
+            document.getElementById('previewTituloCard').innerText = titulo;
+
+            const textBox = document.getElementById('previewTextBox');
+            if (descricaoHtml && descricaoHtml.trim() !== "") {
+                textBox.innerHTML = descricaoHtml;
+                textBox.style.display = "block";
+            } else {
+                textBox.innerHTML = "";
+                textBox.style.display = "none";
+            }
+
+            const imgWrapper = document.getElementById('previewImagemWrapper');
+            const imgEl = document.getElementById('previewImg');
+            if (arquivoPath && arquivoPath.trim() !== "") {
+                imgEl.src = "/static/" + arquivoPath.replace('static/', '');
+                imgWrapper.style.display = "block";
+            } else {
+                imgEl.src = "";
+                imgWrapper.style.display = "none";
+            }
+
+            var myModal = new bootstrap.Modal(document.getElementById('modalPreviewCampanha'));
+            myModal.show();
         }
     </script>
 </body>

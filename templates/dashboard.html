@@ -156,7 +156,10 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             {% for category, message in messages %}
-              <div class="alert alert-{{ category }}">{{ message }}</div>
+              <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm" role="alert">
+                {{ message | safe }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
             {% endfor %}
           {% endif %}
         {% endwith %}
@@ -565,6 +568,17 @@
             document.getElementById('cid_id').value = cid.id;
             document.getElementById('autocompleteResultadosCid').style.display = 'none';
         }
+        
+        document.getElementById('input_cid_busca').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const containerRes = document.getElementById('autocompleteResultadosCid');
+                const primeiroItem = containerRes.querySelector('.autocomplete-item');
+                if (primeiroItem && !primeiroItem.classList.contains('text-muted')) {
+                    primeiroItem.click();
+                }
+            }
+        });
 
         window.addEventListener('click', function(e) {
             if (!document.getElementById('input_cid_busca')?.contains(e.target)) {

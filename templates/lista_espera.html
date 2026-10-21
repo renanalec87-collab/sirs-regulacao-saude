@@ -158,7 +158,7 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
             {% for category, message in messages %}
-              <div class="alert alert-{{ category }}">{{ message }}</div>
+              <div class="alert alert-{{ category }}">{{ message | safe }}</div>
             {% endfor %}
           {% endif %}
         {% endwith %}
@@ -390,7 +390,6 @@
                     <select name="status" id="modalStatus" class="search-select" required>
                         <option value="Aguardando">Aguardando</option>
                         <option value="Em Atendimento">Em Atendimento</option>
-                        <option value="Ajuste de Faixa Etária">Ajuste de Faixa Etária</option>
                         <option value="Atendido / Finalizado">Atendido / Finalizado</option>
                         <option value="Cancelado / Desistência">Cancelado / Desistência</option>
                     </select>
