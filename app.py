@@ -550,14 +550,6 @@ def salvar_paciente():
     paciente_id = request.form.get('id')
     perfil_usuario = session.get('perfil')
 
-    if perfil_usuario == 'NIVEL_III':
-        flash(
-            'Acesso negado: Usuários de Nível III possuem apenas permissão de'
-            ' consulta.',
-            'danger',
-        )
-        return redirect(url_for('dashboard'))
-
     telefone_principal = request.form.get('telefone_principal', '').strip()
     telefone_recado = request.form.get('telefone_recado', '').strip()
 

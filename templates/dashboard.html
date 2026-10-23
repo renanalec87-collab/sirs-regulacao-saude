@@ -182,10 +182,7 @@
             <div style="display: flex; gap: 12px;">
                 <button type="button" class="btn-search" onclick="executarBusca(1)">Pesquisar</button>
                 <button type="button" class="btn-clear" onclick="limparBusca()">Limpar</button>
-                
-                {% if perfil != 'NIVEL_III' %}
-                    <button type="button" class="btn-novo" onclick="abrirModalNovo()" style="margin-left: auto;">+ Novo Paciente</button>
-                {% endif %}
+                <button type="button" class="btn-novo" onclick="abrirModalNovo()" style="margin-left: auto;">+ Novo Paciente</button>                
             </div>
         </div>
 
@@ -196,10 +193,7 @@
                     <span style="font-size: 13px; color: #4b5563; font-weight: 600;" id="resUnidadeRef">Unidade de Referência: -</span>
                 </div>
                 <div class="action-buttons">
-                    <button type="button" class="btn-edit" onclick="abrirModalEdicao()">
-                        {% if perfil == 'NIVEL_III' %}Atualizar Telefones{% else %}Editar Cadastro{% endif %}
-                    </button>
-                    
+                    <button type="button" class="btn-edit" onclick="abrirModalEdicao()">Editar Cadastro</button>                 
                     <button type="button" class="btn-history" onclick="abrirModalHistorico()">Ver Histórico</button>
 
                     {% if perfil in ['NIVEL_I', 'NIVEL_II'] %}
@@ -778,8 +772,6 @@
         }
 
         function abrirModalNovo() {
-            if (PERFIL_USUARIO === 'NIVEL_III') return;
-
             limparErrosModal();
             redefinirEstadoCamposModal(false);
 
@@ -803,10 +795,10 @@
             if (!pacienteAtual) return;
             limparErrosModal();
 
-            const eNivel3 = (PERFIL_USUARIO === 'NIVEL_III');
-            redefinirEstadoCamposModal(eNivel3);
+            // Passamos 'false' para liberar todos os campos de edição para qualquer perfil
+            redefinirEstadoCamposModal(false);
 
-            document.getElementById('modalTitulo').innerText = eNivel3 ? 'Atualizar Telefones de Contato' : 'Editar Cadastro do Paciente';
+            document.getElementById('modalTitulo').innerText = 'Editar Cadastro do Paciente';
             document.getElementById('paciente_id').value = pacienteAtual.id;
             document.getElementById('numero_prontuario').value = pacienteAtual.numero_prontuario !== 'Não informado' ? pacienteAtual.numero_prontuario : '';
             document.getElementById('nome').value = pacienteAtual.nome;
