@@ -34,9 +34,9 @@ def allowed_file(filename, allowed_set):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_set
 
 
-# --- CONEXÃO COM O BANCO DE DADOS ---
+# --- CONEXÃO COM O BANCO DE DADOS (COM TIMEOUT DE 10S PARA EVITAR LOCK) ---
 def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=10.0)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA foreign_keys = ON;')
     return conn
@@ -438,10 +438,9 @@ def api_buscar_cids():
 @app.route('/api/paciente/buscar', methods=['GET'])
 @login_required
 def buscar_paciente():
-    termo_doc = request.args.get('doc', '').strip() or request.args.get(
-        'q', ''
-    ).strip()
+    termo_doc = request.args.get('doc', '').strip()
     termo_nome = request.args.get('nome', '').strip()
+    termo_nasc = request.args.get('nasc', '').strip()
     page = int(request.args.get('page', 1))
     per_page = 50
     offset = (page - 1) * per_page
@@ -453,25 +452,29 @@ def buscar_paciente():
     filtro_sql = ''
     params = []
 
+    # Se a primeira barra (doc) foi preenchida, busca estritamente por CPF ou Prontuário
     if termo_doc:
         doc_limpo = ''.join(filter(str.isdigit, termo_doc))
         if doc_limpo:
-            filtro_sql += (
-                ' AND (u.cpf LIKE ? OR u.cartao_sus LIKE ? OR u.numero_prontuario'
-                ' LIKE ?)'
-            )
-            params.extend([f'%{doc_limpo}%', f'%{doc_limpo}%', f'%{doc_limpo}%'])
-        else:
-            palavras_doc = termo_doc.split()
-            for palavra in palavras_doc:
-                filtro_sql += ' AND (u.nome LIKE ? OR u.numero_prontuario LIKE ?)'
-                params.extend([f'%{palavra}%', f'%{palavra}%'])
-
-    if termo_nome:
-        palavras = termo_nome.split()
-        for palavra in palavras:
-            filtro_sql += ' AND (u.nome LIKE ? OR u.nome_mae LIKE ?)'
-            params.extend([f'%{palavra}%', f'%{palavra}%'])
+            filtro_sql += ' AND (u.cpf LIKE ? OR u.numero_prontuario LIKE ?)'
+            params.extend([f'%{doc_limpo}%', f'%{doc_limpo}%'])
+    
+    # Se a segunda barra (nome/cns/nascimento) foi preenchida
+    elif termo_nome or termo_nasc:
+        if termo_nome:
+            cns_limpo = ''.join(filter(str.isdigit, termo_nome))
+            if cns_limpo and len(cns_limpo) >= 3:
+                filtro_sql += ' AND (u.nome LIKE ? OR u.nome_mae LIKE ? OR u.cartao_sus LIKE ?)'
+                params.extend([f'%{termo_nome}%', f'%{termo_nome}%', f'%{cns_limpo}%'])
+            else:
+                palavras = termo_nome.split()
+                for palavra in palavras:
+                    filtro_sql += ' AND (u.nome LIKE ? OR u.nome_mae LIKE ?)'
+                    params.extend([f'%{palavra}%', f'%{palavra}%'])
+        
+        if termo_nasc:
+            filtro_sql += ' AND u.data_nascimento = ?'
+            params.append(termo_nasc)
 
     cursor.execute(query_count + filtro_sql, params)
     total_registros = cursor.fetchone()[0]
@@ -548,11 +551,7 @@ def buscar_paciente():
 @login_required
 def salvar_paciente():
     paciente_id = request.form.get('id')
-    perfil_usuario = session.get('perfil')
-
-    telefone_principal = request.form.get('telefone_principal', '').strip()
-    telefone_recado = request.form.get('telefone_recado', '').strip()
-
+    
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -565,6 +564,8 @@ def salvar_paciente():
         data_nascimento = request.form.get('data_nascimento')
         sexo = request.form.get('sexo')
         unidade_referencia_id = request.form.get('unidade_referencia_id')
+        telefone_principal = request.form.get('telefone_principal', '').strip()
+        telefone_recado = request.form.get('telefone_recado', '').strip()
 
         if paciente_id:
             query = """
@@ -624,8 +625,7 @@ def salvar_paciente():
     except sqlite3.IntegrityError:
         conn.rollback()
         flash(
-            'Erro: Já existe um paciente cadastrado com este CPF, Cartão SUS ou Nº'
-            ' de Prontuário.',
+            'Erro: Já existe um paciente cadastrado com este CPF, Cartão SUS ou Nº de Prontuário.',
             'danger',
         )
     except Exception as e:
@@ -703,12 +703,10 @@ def inserir_lista_espera():
     usuario_id = request.form.get('usuario_id')
     modalidade = request.form.get('modalidade_atendimento')
     
-    # Define a unidade solicitante: tenta pegar da sessão, senão do formulário, senão define uma padrão/global da rede ou do admin
     unidade_solicitante_id = session.get('estabelecimento_id') or request.form.get('unidade_solicitante_id')
     
     if not unidade_solicitante_id:
         conn_temp = get_db_connection()
-        # Se for admin sem unidade na sessão, pega a primeira unidade ativa do tipo CAPS ou Central como fallback de origem
         fallback_est = conn_temp.execute("SELECT id FROM estabelecimentos WHERE ativo = 1 LIMIT 1").fetchone()
         conn_temp.close()
         if fallback_est:
@@ -815,7 +813,6 @@ def atualizar_status_lista():
         flash('Erro: Esta solicitação já foi encerrada.', 'danger')
         return redirect(url_for('ver_lista_espera'))
 
-    # TRAVA DE SEGURANÇA: Se estiver "Em Atendimento", apenas a mesma unidade ou Nível I pode alterar
     unidade_atual_sessao = session.get('estabelecimento_id')
     perfil_usuario = session.get('perfil')
 
@@ -1385,7 +1382,7 @@ def api_relatorios_mapa():
         'CENTRO DE SAUDE II': [-23.529892, -47.132510],
         'DEPARTAMENTO DE SAUDE': [-23.541973, -47.129337],
         'FARMACIA CENTRAL': [-23.529892, -47.132510],
-        'GOIANA': [-23.554126, -47.147340],            
+        'GOIANA': [-23.554126, -47.147340],          
         'GUACU': [-23.519083, -47.141246],
         'HOSPITAL SANTA CASA': [-23.537575, -47.138604],
         'MAYLASKY': [-23.557459, -47.090049],
@@ -1535,7 +1532,6 @@ def listar_cbos():
     for row in cbos_raw:
         cbo_dict = dict(row)
         
-        # Busca os detalhes dos profissionais autorizados para carregar corretamente no modal de edição
         autorizados = cursor.execute("""
             SELECT p.id, p.nome, p.cpf
             FROM cbo_profissionais_autorizados cpa
@@ -1569,7 +1565,6 @@ def salvar_cbo():
     ativa = 1 if request.form.get('ativa') == '1' else 0
     gera_lista_espera = 1 if request.form.get('gera_lista_espera') == '1' else 0
     
-    # Captura a lista de IDs dos profissionais autorizados selecionados no modal
     profissionais_autorizados = request.form.getlist('profissionais_autorizados')
 
     conn = get_db_connection()
@@ -1590,7 +1585,6 @@ def salvar_cbo():
             cbo_id = cursor.lastrowid
             flash('Nova Especialidade/CBO cadastrada com sucesso!', 'success')
 
-        # Atualiza a tabela de restrições de profissionais:
         cursor.execute("DELETE FROM cbo_profissionais_autorizados WHERE cbo_id = ?", (cbo_id,))
         
         for prof_id in profissionais_autorizados:
@@ -1661,10 +1655,7 @@ def salvar_campanha():
     titulo = request.form.get('titulo', '').strip()
     data_inicio = request.form.get('data_inicio')
     data_fim = request.form.get('data_fim')
-    
-    # Captura o HTML formatado gerado pelo Summernote (negrito, listas, tabelas, etc.)
     descricao_texto = request.form.get('descricao_texto', '').strip()
-    
     ativo = 1 if request.form.get('ativo', '1') == '1' else 0
 
     conn = get_db_connection()
@@ -1926,7 +1917,7 @@ def excluir_anexo_pdf(anexo_id):
         conn.close()
     return redirect(url_for('admin_guias'))
 
-# --- API PARA BUSCAR PROFISSIONAIS NO AUTOCOMPLETE DE RESTRIÇÕES (Mín. 3 letras) ---
+
 @app.route('/api/buscar-profissionais', methods=['GET'])
 @login_required
 @nivel_i_required
@@ -1950,6 +1941,7 @@ def api_buscar_profissionais():
     conn.close()
     
     return jsonify(profissionais)
+
 
 @app.route('/lista-espera')
 @login_required

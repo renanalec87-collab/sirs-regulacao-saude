@@ -27,6 +27,8 @@
 
         .search-input { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 15px; outline: none; background: white; }
         .search-input:focus { border-color: #692A85; box-shadow: 0 0 0 3px rgba(105, 42, 133, 0.1); }
+        .search-input:disabled { background-color: #f3f4f6; cursor: not-allowed; opacity: 0.7; }
+
         .btn-search { background-color: #692A85; color: white; border: none; padding: 12px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; white-space: nowrap; }
         .btn-search:hover { background-color: #521d6b; }
         .btn-clear { background-color: #4b5563; color: white; border: none; padding: 12px 18px; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s; white-space: nowrap; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
@@ -166,16 +168,25 @@
 
         <div class="search-card">
             <h2>Pesquisar Paciente</h2>
-            <p>Utilize o campo de documentos ou o campo de nome para localizar o prontuário com precisão.</p>
+            <p>Utilize a busca exata por CPF/Prontuário (somente números) ou utilize os filtros gerais (Nome, CNS e Data de Nascimento).</p>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 15px;">
+            <!-- Barra 1: Exclusiva para CPF / Prontuário com bloqueio dinâmico -->
+            <div style="margin-bottom: 14px;">
                 <div class="form-group" style="margin-bottom: 0;">
-                    <label for="searchDoc" style="font-size: 12px; color: #4b5563; font-weight: 600; margin-bottom: 4px; display: block;">Por Documento / Prontuário</label>
-                    <input type="text" id="searchDoc" class="search-input" placeholder="CPF, Cartão SUS ou Prontuário..." onkeypress="handleKeyPress(event)">
+                    <label for="searchDoc" style="font-size: 12px; color: #4b5563; font-weight: 600; margin-bottom: 4px; display: block;">Por CPF ou Nº Prontuário (Apenas Números)</label>
+                    <input type="text" id="searchDoc" class="search-input" placeholder="Digite apenas os números do CPF ou Prontuário..." oninput="controlarBloqueioCampos('doc')" onkeypress="handleKeyPress(event)">
+                </div>
+            </div>
+
+            <!-- Barra 2 e Filtros Avançados: Nome, CNS e Data de Nascimento -->
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 15px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="searchNome" style="font-size: 12px; color: #4b5563; font-weight: 600; margin-bottom: 4px; display: block;">Por Nome do Paciente, da Mãe ou Cartão SUS (CNS)</label>
+                    <input type="text" id="searchNome" class="search-input" placeholder="Digite o nome ou CNS..." oninput="controlarBloqueioCampos('nome')" onkeypress="handleKeyPress(event)" autofocus>
                 </div>
                 <div class="form-group" style="margin-bottom: 0;">
-                    <label for="searchNome" style="font-size: 12px; color: #4b5563; font-weight: 600; margin-bottom: 4px; display: block;">Por Nome do Paciente ou da Mãe</label>
-                    <input type="text" id="searchNome" class="search-input" placeholder="Digite o nome..." onkeypress="handleKeyPress(event)" autofocus>
+                    <label for="searchNasc" style="font-size: 12px; color: #4b5563; font-weight: 600; margin-bottom: 4px; display: block;">Data de Nascimento (Opcional)</label>
+                    <input type="date" id="searchNasc" class="search-input" oninput="controlarBloqueioCampos('nome')" onkeypress="handleKeyPress(event)">
                 </div>
             </div>
 
@@ -193,7 +204,7 @@
                     <span style="font-size: 13px; color: #4b5563; font-weight: 600;" id="resUnidadeRef">Unidade de Referência: -</span>
                 </div>
                 <div class="action-buttons">
-                    <button type="button" class="btn-edit" onclick="abrirModalEdicao()">Editar Cadastro</button>                 
+                    <button type="button" class="btn-edit" onclick="abrirModalEdicao()">Editar Cadastro</button>             
                     <button type="button" class="btn-history" onclick="abrirModalHistorico()">Ver Histórico</button>
 
                     {% if perfil in ['NIVEL_I', 'NIVEL_II'] %}
@@ -522,6 +533,35 @@
             {% endfor %}
         ];
 
+        // Lógica de bloqueio mútuo e restrição estrita de números no campo de CPF/Prontuário
+        function controlarBloqueioCampos(origem) {
+            const inputDoc = document.getElementById('searchDoc');
+            const inputNome = document.getElementById('searchNome');
+            const inputNasc = document.getElementById('searchNasc');
+
+            if (origem === 'doc') {
+                // Remove qualquer caractere que não seja número para garantir busca indexada rápida
+                inputDoc.value = inputDoc.value.replace(/\D/g, '');
+
+                if (inputDoc.value.trim().length > 0) {
+                    inputNome.value = '';
+                    inputNasc.value = '';
+                    inputNome.disabled = true;
+                    inputNasc.disabled = true;
+                } else {
+                    inputNome.disabled = false;
+                    inputNasc.disabled = false;
+                }
+            } else if (origem === 'nome') {
+                if (inputNome.value.trim().length > 0 || inputNasc.value.trim().length > 0) {
+                    inputDoc.value = '';
+                    inputDoc.disabled = true;
+                } else {
+                    inputDoc.disabled = false;
+                }
+            }
+        }
+
         function buscarCidsDinamico(termo) {
             clearTimeout(timeoutCid);
             const containerRes = document.getElementById('autocompleteResultadosCid');
@@ -588,8 +628,17 @@
         }
 
         function limparBusca() {
-            document.getElementById('searchDoc').value = '';
-            document.getElementById('searchNome').value = '';
+            const inputDoc = document.getElementById('searchDoc');
+            const inputNome = document.getElementById('searchNome');
+            const inputNasc = document.getElementById('searchNasc');
+
+            inputDoc.value = '';
+            inputNome.value = '';
+            inputNasc.value = '';
+            inputDoc.disabled = false;
+            inputNome.disabled = false;
+            inputNasc.disabled = false;
+
             document.getElementById('resultsPanel').style.display = 'none';
             document.getElementById('listaCompletaContainer').style.display = 'none';
             pacienteAtual = null;
@@ -598,6 +647,7 @@
         function executarBusca(page = 1) {
             const doc = document.getElementById('searchDoc').value.trim();
             const nome = document.getElementById('searchNome').value.trim();
+            const nasc = document.getElementById('searchNasc').value.trim();
             const panel = document.getElementById('resultsPanel');
             const listaContainer = document.getElementById('listaCompletaContainer');
             
@@ -605,20 +655,21 @@
             listaContainer.style.display = 'none';
             paginaAtualGlobal = page;
 
-            fetch(`/api/paciente/buscar?doc=${encodeURIComponent(doc)}&nome=${encodeURIComponent(nome)}&page=${page}`)
+            // Enviamos os parâmetros atualizados para a API (incluindo a data de nascimento opcional)
+            fetch(`/api/paciente/buscar?doc=${encodeURIComponent(doc)}&nome=${encodeURIComponent(nome)}&nasc=${encodeURIComponent(nasc)}&page=${page}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.sucesso && data.encontrado) {
                         listaPacientesCache = data.dados;
                         totalPaginasGlobal = data.total_paginas || 1;
 
-                        if (data.dados.length === 1 && (doc !== "" || nome !== "") && page === 1 && data.total_registros === 1) {
+                        if (data.dados.length === 1 && (doc !== "" || nome !== "" || nasc !== "") && page === 1 && data.total_registros === 1) {
                             pacienteAtual = data.dados[0];
                             preencherPainelUnico(pacienteAtual);
                             panel.style.display = 'block';
                         } else {
-                            let termoDescricao = doc ? `Documento: ${doc}` : `Nome: ${nome}`;
-                            if (!doc && !nome) termoDescricao = "Relação Geral";
+                            let termoDescricao = doc ? `CPF/Prontuário: ${doc}` : (nome ? `Nome/CNS: ${nome}` : `Data Nasc: ${nasc}`);
+                            if (!doc && !nome && !nasc) termoDescricao = "Relação Geral";
                             exibirListaPacientes(data.dados, `Resultados da busca (${termoDescricao}) - Total: ${data.total_registros} registros`);
                         }
                     } else {
@@ -795,7 +846,6 @@
             if (!pacienteAtual) return;
             limparErrosModal();
 
-            // Passamos 'false' para liberar todos os campos de edição para qualquer perfil
             redefinirEstadoCamposModal(false);
 
             document.getElementById('modalTitulo').innerText = 'Editar Cadastro do Paciente';
