@@ -88,14 +88,14 @@
                href="#" id="userMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(255,255,255,0.15);">
                 <div class="text-end me-2">
                     <span class="d-block fw-semibold text-white" style="font-size: 0.9rem;">{{ session.get('nome') }}</span>
-                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('perfil') }}</small>
+                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('profissao', 'Profissional') }}</small>
                 </div>
             </a>
 
-            <!-- Menu Flutuante (Dropdown) -->
+            <!-- Menu Flutuante -->
             <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-2" aria-labelledby="userMenuDropdown" style="min-width: 280px;">
                 <li><h6 class="dropdown-header text-uppercase text-secondary fw-bold" style="font-size: 0.75rem;">Acesso Atual</h6></li>
-                <li><span class="dropdown-item-text py-1 text-dark small"><strong>CBO:</strong> {{ session.get('ocupacao') }} ({{ session.get('cbo_codigo') }})</span></li>
+                <li><span class="dropdown-item-text py-1 text-dark small"><strong>Profissão:</strong> {{ session.get('profissao') or 'Não informada' }}</span></li>
                 <li><span class="dropdown-item-text py-1 text-dark small"><strong>Unidade:</strong> {{ session.get('estabelecimento') }}</span></li>
                 <li><span class="dropdown-item-text py-1 text-muted small">Último acesso: {{ session.get('ultimo_acesso', 'Agora') }}</span></li>
                 
@@ -195,7 +195,7 @@
                             {% endif %}
                         </td>
                         <td style="text-align: right;">
-                            <button class="btn-edit" onclick='abrirModalEdicao({{ est | tojson }})'>Editar</button>
+                            <button class="btn-edit" onclick='abrirModalEdicao({{ est | tojson | safe }})'>Editar</button>
                         </td>
                     </tr>
                     {% else %}
@@ -264,22 +264,37 @@
         </div>
     </div>
 
-    <!-- MODAL: HISTÓRICO DE ACESSOS -->
+    <!-- MODAL: HISTÓRICO DE ACESSOS E AUDITORIA (PADRONIZADO) -->
     <div class="modal fade" id="modalHistoricoAcessos" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content p-3">
-                <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold">📊 Histórico de Acessos Recentes</h5>
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content p-3 shadow-lg border-0">
+                <div class="modal-header border-bottom pb-2 bg-light">
+                    <h5 class="modal-title fw-bold">📊 Histórico de Acessos e Auditoria</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <p class="text-muted small">Registros de conexões e seleções de unidades vinculadas ao seu perfil no sistema.</p>
-                    <div class="alert alert-light border small py-2 mb-0">
-                        Último registro capturado: <strong>{{ session.get('ultimo_acesso', 'Agora') }}</strong>
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">Registros de conexões e eventos do seu perfil restritos aos <strong>últimos 30 dias</strong> (ordem decrescente).</p>
+                    
+                    <div class="table-responsive border rounded" style="max-height: 380px; overflow-y: auto;">
+                        <table class="table table-hover table-striped align-middle mb-0 small">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th class="py-2">Data e Hora</th>
+                                    <th class="py-2">Ação / Evento</th>
+                                    <th class="py-2">Endereço IP (Origem)</th>
+                                    <th class="py-2">Unidade Envolvida</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-historico-corpo">
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">A carregar histórico...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-                <div class="modal-footer border-top-0 pt-0">
-                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Fechar</button>
+                <div class="modal-footer bg-light border-top">
+                    <button type="button" class="btn btn-secondary btn-sm px-4" data-bs-dismiss="modal">Fechar</button>
                 </div>
             </div>
         </div>
@@ -343,6 +358,69 @@
         function limparBuscaEstabelecimento() {
             document.getElementById('filtroEstabelecimento').value = '';
             filtrarTabelaEstabelecimentos();
+        }
+
+        // Script de Carregamento Dinâmico do Histórico de Acessos com Conversão e Fuso Corrigidos
+        const modalHistoricoEl = document.getElementById('modalHistoricoAcessos');
+        if (modalHistoricoEl) {
+            modalHistoricoEl.addEventListener('show.bs.modal', function () {
+                const tbody = document.getElementById('tabela-historico-corpo');
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">A carregar registros...</td></tr>';
+                
+                fetch('/api/historico-acessos')
+                    .then(response => response.json())
+                    .then(data => {
+                        const registros = Array.isArray(data) ? data : (data.historico || []);
+                        
+                        if (registros.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">Nenhum registro encontrado.</td></tr>';
+                            return;
+                        }
+                        
+                        let html = '';
+                        registros.forEach(item => {
+                            let badgeClass = 'bg-secondary';
+                            const acaoStr = item.acao || '';
+                            if (acaoStr === 'LOGIN') badgeClass = 'bg-success';
+                            else if (acaoStr.includes('TROCA')) badgeClass = 'bg-dark';
+
+                            let dataExibicao = item.data_acesso || item.data || '';
+                            
+                            if (dataExibicao && dataExibicao.includes('-')) {
+                                try {
+                                    const dataIso = dataExibicao.replace(' ', 'T');
+                                    const d = new Date(dataIso);
+                                    d.setHours(d.getHours() - 3);
+
+                                    const dia = String(d.getDate()).padStart(2, '0');
+                                    const mes = String(d.getMonth() + 1).padStart(2, '0');
+                                    const ano = d.getFullYear();
+                                    const hora = String(d.getHours()).padStart(2, '0');
+                                    const min = String(d.getMinutes()).padStart(2, '0');
+                                    const seg = String(d.getSeconds()).padStart(2, '0');
+
+                                    dataExibicao = `${dia}/${mes}/${ano} ${hora}:${min}:${seg}`;
+                                } catch (e) {
+                                    console.error("Erro ao formatar data:", e);
+                                }
+                            }
+
+                            html += `
+                                <tr>
+                                    <td class="fw-semibold">${dataExibicao}</td>
+                                    <td><span class="badge ${badgeClass} text-white px-2 py-1">${acaoStr}</span></td>
+                                    <td class="text-danger font-monospace">${item.ip_address || item.ip || '-'}</td>
+                                    <td>${item.estabelecimento_nome || item.unidade || '-'}</td>
+                                </tr>
+                            `;
+                        });
+                        tbody.innerHTML = html;
+                    })
+                    .catch(error => {
+                        console.error('Erro ao buscar histórico:', error);
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-3">Erro ao carregar os dados de auditoria.</td></tr>';
+                    });
+            });
         }
 
         function abrirModalNovo() {

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Intranet CAPS II - Gerenciamento de Profissionais</title>
-    <!-- Bootstrap 5 CSS para os Dropdowns e Modais do topo -->
+    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -57,9 +57,9 @@
         .btn-edit { background-color: #2563eb; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s; text-decoration: none; display: inline-block; }
         .btn-edit:hover { background-color: #1d4ed8; }
 
-        /* Modal customizado com Design Profissional */
+        /* Modal customizado */
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px); z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
-        .modal-content-custom { background: white; width: 100%; max-width: 780px; border-radius: 12px; padding: 30px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); max-height: 92vh; overflow-y: auto; border-top: 5px solid #692A85; }
+        .modal-content-custom { background: white; width: 100%; max-width: 780px; border-radius: 12px; padding: 30px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); max-height: 92vh; overflow-y: auto; border-top: 5px solid #692A85; }
         .modal-header-custom { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e5e7eb; padding-bottom: 16px; margin-bottom: 22px; }
         .modal-header-custom h3 { font-size: 19px; color: #111827; font-weight: 700; }
         .btn-close-custom { background: none; border: none; font-size: 22px; cursor: pointer; color: #6b7280; transition: color 0.2s; }
@@ -72,14 +72,13 @@
         .form-group input, .form-group select { width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; outline: none; background: white; transition: all 0.2s; }
         .form-group input:focus, .form-group select:focus { border-color: #692A85; box-shadow: 0 0 0 3px rgba(105, 42, 133, 0.12); }
 
-        /* Container de Vínculos Estilizado */
         .vinculos-card-wrapper { background: #fdfcff; border: 1px solid #e9d5ff; border-radius: 8px; padding: 18px; margin-top: 6px; margin-bottom: 6px; }
         .vinculos-table th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: #4b5563; background: #f3e8ff; border-color: #e9d5ff; }
         
         .modal-footer-custom { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 18px; }
-        .btn-cancel { background: #e5e7eb; color: #374151; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .btn-cancel { background: #e5e7eb; color: #374151; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; }
         .btn-cancel:hover { background: #d1d5db; }
-        .btn-save { background: #692A85; color: white; border: none; padding: 10px 24px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+        .btn-save { background: #692A85; color: white; border: none; padding: 10px 24px; border-radius: 6px; font-weight: 600; cursor: pointer; }
         .btn-save:hover { background: #521d6b; }
 
         .footer { text-align: center; padding: 14px 0; font-size: 12px; color: #6b7280; background-color: #e5e7eb; margin-top: auto; border-top: 1px solid #d1d5db; }
@@ -87,26 +86,26 @@
 </head>
 <body>
 
-    <!-- Topbar Integrada com o Menu Dropdown Padronizado -->
+    <!-- Topbar Ajustada -->
     <div class="topbar">
         <div class="title">{{ session.get('estabelecimento', 'CAPS II — São Roque') }}</div>
-        <div class="center-title">Gestão de Especialidades</div>
+        <div class="center-title">Gerenciamento de Profissionais</div>
         
         <div class="dropdown">
             <a class="dropdown-toggle text-white d-flex align-items-center text-decoration-none py-1 px-2 rounded" 
                href="#" id="userMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(255,255,255,0.15);">
                 <div class="text-end me-2">
                     <span class="d-block fw-semibold text-white" style="font-size: 0.9rem;">{{ session.get('nome') }}</span>
-                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('perfil') }}</small>
+                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('profissao', 'Profissional') }}</small>
                 </div>
             </a>
 
-            <!-- Menu Flutuante (Dropdown) -->
+            <!-- Menu Flutuante -->
             <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-2" aria-labelledby="userMenuDropdown" style="min-width: 280px;">
                 <li><h6 class="dropdown-header text-uppercase text-secondary fw-bold" style="font-size: 0.75rem;">Acesso Atual</h6></li>
-                <li><span class="dropdown-item-text py-1 text-dark small"><strong>CBO:</strong> {{ session.get('ocupacao') }} ({{ session.get('cbo_codigo') }})</span></li>
+                <li><span class="dropdown-item-text py-1 text-dark small"><strong>Profissão:</strong> {{ session.get('profissao') or 'Não informada' }}</span></li>
                 <li><span class="dropdown-item-text py-1 text-dark small"><strong>Unidade:</strong> {{ session.get('estabelecimento') }}</span></li>
-                <li><span class="dropdown-item-text py-1 text-muted small">Último acesso: {{ session.get('ultimo_acesso', 'Agora') }}</span></li>
+                <li><span class="dropdown-item-text py-1 text-muted small">Último acesso: {{ session.get('ultimo_acesso', 'Primeiro acesso') }}</span></li>
                 
                 <li><hr class="dropdown-divider my-2"></li>
 
@@ -167,7 +166,7 @@
         <div class="page-header">
             <div>
                 <h2>Gerenciamento de Profissionais e Credenciais</h2>
-                <p>Cadastre novos servidores, defina níveis de acesso, múltiplos vínculos de lotação e conselhos de classe.</p>
+                <p>Cadastre novos servidores, defina níveis de acesso, unidades de lotação e conselhos de classe.</p>
             </div>
             <button type="button" class="btn-novo" onclick="abrirModalNovo()">+ Novo Profissional</button>
         </div>
@@ -206,7 +205,7 @@
                     <tr>
                         <th>Nome / E-mail</th>
                         <th>CPF</th>
-                        <th>Ocupação / Cargo (CBO)</th>
+                        <th>Profissão / Cargo</th>
                         <th>Unidade de Lotação</th>
                         <th>Registro / Conselho</th>
                         <th>Nível de Acesso</th>
@@ -222,9 +221,9 @@
                             <small style="color: #6b7280;">{{ prof.email }}</small>
                         </td>
                         <td>{{ prof.cpf | cpf }}</td>
-                        <td>{{ prof.cbo_ocupacao or prof.ocupacao }}</td>
+                        <td>{{ prof.profissao or 'Não informada' }}</td>
                         <td>{{ prof.estabelecimento_nome or 'Não informada' }}</td>
-                        <td>{{ prof.cbo_conselho or '-' }}: {{ prof.registro_profissional or 'N/A' }}</td>
+                        <td>{{ prof.sigla_conselho or '-' }}: {{ prof.registro_profissional or 'N/A' }}</td>
                         <td>
                             {% if prof.perfil == 'NIVEL_I' %}
                                 <span class="badge-perfil bg-nivel1">NIVEL_I (Gestão)</span>
@@ -242,7 +241,7 @@
                             {% endif %}
                         </td>
                         <td style="text-align: right;">
-                            <button class="btn-edit" onclick='abrirModalEdicao({{ prof | tojson }})'>Editar</button>
+                            <button class="btn-edit" onclick='abrirModalEdicao({{ prof | tojson | safe }})'>Editar</button>
                         </td>
                     </tr>
                     {% else %}
@@ -301,17 +300,58 @@
                         <input type="email" name="email" id="prof_email" placeholder="ana.souza@saoroque.sp.gov.br" required>
                     </div>
 
-                    <!-- SEÇÃO DE MÚLTIPLOS VÍNCULOS (UNIDADES E CBOS) -->
+                    <!-- PROFISSÃO HÍBRIDA -->
+                    <div class="form-group">
+                        <label>Profissão / Cargo *</label>
+                        <select name="profissao" id="prof_profissao" class="form-select" onchange="verificarOutraProfissao(this)" required>
+                            <option value="">Selecione a profissão...</option>
+                            <option value="Psicólogo(a)">Psicólogo(a)</option>
+                            <option value="Assistente Social">Assistente Social</option>
+                            <option value="Médico(a) Psiquiatra">Médico(a) Psiquiatra</option>
+                            <option value="Enfermeiro(a)">Enfermeiro(a)</option>
+                            <option value="Terapeuta Ocupacional">Terapeuta Ocupacional</option>
+                            <option value="Fonoaudiólogo(a)">Fonoaudiólogo(a)</option>
+                            <option value="Técnico(a) de Enfermagem">Técnico(a) de Enfermagem</option>
+                            <option value="Auxiliar Administrativo">Auxiliar Administrativo</option>
+                            <option value="OUTRO">Outra Profissão (Digitar)...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="divOutraProfissao" style="display: none;">
+                        <label>Especifique a Profissão *</label>
+                        <input type="text" id="prof_outra_input" placeholder="Digite o cargo exato">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Sigla do Conselho *</label>
+                        <select name="sigla_conselho" id="prof_sigla_conselho" class="form-select" required>
+                            <option value="CRP">CRP (Psicologia)</option>
+                            <option value="CRM">CRM (Medicina)</option>
+                            <option value="CRESS">CRESS (Serviço Social)</option>
+                            <option value="COREN">COREN (Enfermagem)</option>
+                            <option value="CREFITO">CREFITO (Terapia Ocupacional)</option>
+                            <option value="CRF">CRF (Fonoaudiologia)</option>
+                            <option value="MTE">MTE / Administrativo</option>
+                            <option value="OUTRO">Outro</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group form-group-full">
+                        <label>Registro Profissional (Nº do Conselho)</label>
+                        <input type="text" name="registro_profissional" id="prof_registro" placeholder="Ex: CRP 06/12345">
+                    </div>
+
+                    <!-- SEÇÃO DE VÍNCULOS DE LOTAÇÃO (Múltiplas Unidades) -->
                     <div class="form-group form-group-full vinculos-card-wrapper">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <div>
                                 <label class="form-label fw-bold text-dark mb-0" style="font-size: 14px;">
-                                    🔗 Vínculos Profissionais (Unidades e CBOs) *
+                                    🔗 Vínculos Profissionais (Unidades de Lotação) *
                                 </label>
-                                <span class="d-block text-muted small">Gerencie as unidades de lotação e ocupações vinculadas a este servidor.</span>
+                                <span class="d-block text-muted small">Gerencie as unidades de saúde em que este servidor está lotado.</span>
                             </div>
                             <button type="button" class="btn btn-outline-success btn-sm fw-semibold" id="btn-adicionar-vinculo">
-                                ➕ Adicionar Vínculo
+                                ➕ Adicionar Unidade
                             </button>
                         </div>
                         
@@ -320,7 +360,6 @@
                                 <thead>
                                     <tr>
                                         <th>Unidade de Lotação</th>
-                                        <th>Ocupação / Cargo (CBO)</th>
                                         <th style="width: 75px;" class="text-center">Ação</th>
                                     </tr>
                                 </thead>
@@ -349,11 +388,6 @@
                     </div>
 
                     <div class="form-group form-group-full">
-                        <label>Registro Profissional</label>
-                        <input type="text" name="registro_profissional" id="prof_registro" placeholder="Ex: 06/12345">
-                    </div>
-
-                    <div class="form-group form-group-full">
                         <label>Senha de Acesso <span id="labelSenhaHelp" style="font-weight: normal; color: #6b7280; display: none;">(Deixe em branco para não alterar na edição)</span> *</label>
                         <input type="password" name="senha" id="prof_senha" placeholder="Mínimo de 8 caracteres seguros" minlength="8">
                     </div>
@@ -376,36 +410,44 @@
     <!-- Template robusto em string JS para clonagem segura -->
     <script>
         const estabelecimentosOpcoes = `
-            <option value="">Selecione a unidade...</option>
+            <option value="">Selecione a unidade de lotação...</option>
             {% for est in estabelecimentos %}
             <option value="{{ est.id }}">{{ est.nome }}</option>
             {% endfor %}
         `;
-
-        const cbosOpcoes = `
-            <option value="">Selecione a ocupação...</option>
-            {% for cbo in cbos %}
-            <option value="{{ cbo.id }}">{{ cbo.ocupacao }} ({{ cbo.sigla_conselho or 'Sem Conselho' }})</option>
-            {% endfor %}
-        `;
     </script>
 
-    <!-- MODAL: HISTÓRICO DE ACESSOS -->
+    <!-- MODAL: HISTÓRICO DE ACESSOS E AUDITORIA (PADRONIZADO) -->
     <div class="modal fade" id="modalHistoricoAcessos" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content p-3">
-                <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold">📊 Histórico de Acessos Recentes</h5>
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content p-3 shadow-lg border-0">
+                <div class="modal-header border-bottom pb-2 bg-light">
+                    <h5 class="modal-title fw-bold">📊 Histórico de Acessos e Auditoria</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <p class="text-muted small">Registros de conexões e seleções de unidades vinculadas ao seu perfil no sistema.</p>
-                    <div class="alert alert-light border small py-2 mb-0">
-                        Último registro capturado: <strong>{{ session.get('ultimo_acesso', 'Agora') }}</strong>
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">Registros de conexões e eventos do seu perfil restritos aos <strong>últimos 30 dias</strong> (ordem decrescente).</p>
+                    
+                    <div class="table-responsive border rounded" style="max-height: 380px; overflow-y: auto;">
+                        <table class="table table-hover table-striped align-middle mb-0 small">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th class="py-2">Data e Hora</th>
+                                    <th class="py-2">Ação / Evento</th>
+                                    <th class="py-2">Endereço IP (Origem)</th>
+                                    <th class="py-2">Unidade Envolvida</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-historico-corpo">
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">A carregar histórico...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-                <div class="modal-footer border-top-0 pt-0">
-                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Fechar</button>
+                <div class="modal-footer bg-light border-top">
+                    <button type="button" class="btn btn-secondary btn-sm px-4" data-bs-dismiss="modal">Fechar</button>
                 </div>
             </div>
         </div>
@@ -480,11 +522,94 @@
             i.value = v;
         }
 
-        // Lógica de Vínculos Múltiplos no Modal
+        // Lógica segura do Select Híbrido de Profissão
+        function verificarOutraProfissao(select) {
+            const divOutra = document.getElementById('divOutraProfissao');
+            const inputOutra = document.getElementById('prof_outra_input');
+            
+            if (select.value === 'OUTRO') {
+                divOutra.style.display = 'block';
+                inputOutra.setAttribute('required', 'true');
+                inputOutra.setAttribute('name', 'profissao');
+                select.removeAttribute('name');
+            } else {
+                divOutra.style.display = 'none';
+                inputOutra.removeAttribute('required');
+                inputOutra.removeAttribute('name');
+                select.setAttribute('name', 'profissao');
+            }
+        }
+
+        // Script de Carregamento Dinâmico do Histórico de Acessos com Conversão e Fuso Corrigidos
+        const modalHistoricoEl = document.getElementById('modalHistoricoAcessos');
+        if (modalHistoricoEl) {
+            modalHistoricoEl.addEventListener('show.bs.modal', function () {
+                const tbody = document.getElementById('tabela-historico-corpo');
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">A carregar registros...</td></tr>';
+                
+                fetch('/api/historico-acessos')
+                    .then(response => response.json())
+                    .then(data => {
+                        // Suporta tanto o formato { historico: [...] } quanto [...] direto da API
+                        const registros = Array.isArray(data) ? data : (data.historico || []);
+                        
+                        if (registros.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">Nenhum registro encontrado.</td></tr>';
+                            return;
+                        }
+                        
+                        let html = '';
+                        registros.forEach(item => {
+                            let badgeClass = 'bg-secondary';
+                            const acaoStr = item.acao || '';
+                            if (acaoStr === 'LOGIN') badgeClass = 'bg-success';
+                            else if (acaoStr.includes('TROCA')) badgeClass = 'bg-dark';
+
+                            let dataExibicao = item.data_acesso || item.data || '';
+                            
+                            // Converte a data para DD/MM/AAAA e corrige o fuso horário (subtrai 3 horas)
+                            if (dataExibicao && dataExibicao.includes('-')) {
+                                try {
+                                    const dataIso = dataExibicao.replace(' ', 'T');
+                                    const d = new Date(dataIso);
+                                    d.setHours(d.getHours() - 3);
+
+                                    const dia = String(d.getDate()).padStart(2, '0');
+                                    const mes = String(d.getMonth() + 1).padStart(2, '0');
+                                    const ano = d.getFullYear();
+                                    const hora = String(d.getHours()).padStart(2, '0');
+                                    const min = String(d.getMinutes()).padStart(2, '0');
+                                    const seg = String(d.getSeconds()).padStart(2, '0');
+
+                                    dataExibicao = `${dia}/${mes}/${ano} ${hora}:${min}:${seg}`;
+                                } catch (e) {
+                                    console.error("Erro ao formatar data:", e);
+                                }
+                            }
+
+                            html += `
+                                <tr>
+                                    <td class="fw-semibold">${dataExibicao}</td>
+                                    <td><span class="badge ${badgeClass} text-white px-2 py-1">${acaoStr}</span></td>
+                                    <td class="text-danger font-monospace">${item.ip_address || item.ip || '-'}</td>
+                                    <td>${item.estabelecimento_nome || item.unidade || '-'}</td>
+                                </tr>
+                            `;
+                        });
+                        tbody.innerHTML = html;
+                    })
+                    .catch(error => {
+                        console.error('Erro ao buscar histórico:', error);
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-3">Erro ao carregar os dados de auditoria.</td></tr>';
+                    });
+            });
+        }
+
+        // Lógica de Vínculos Múltiplos (Unidades) no Modal
         const containerVinculos = document.getElementById('vinculos-container');
         const btnAdicionarVinculo = document.getElementById('btn-adicionar-vinculo');
 
-        function adicionarLinhaVinculo(estabelecimentoId = '', cboId = '') {
+        function adicionarLinhaVinculo(estabelecimentoId = '') {
             const tr = document.createElement('tr');
             tr.className = 'vinculo-row';
             
@@ -492,11 +617,6 @@
                 <td>
                     <select name="estabelecimento_ids[]" class="form-select form-select-sm select-estabelecimento" required>
                         ${estabelecimentosOpcoes}
-                    </select>
-                </td>
-                <td>
-                    <select name="cbo_ids[]" class="form-select form-select-sm select-cbo" required>
-                        ${cbosOpcoes}
                     </select>
                 </td>
                 <td class="text-center align-middle">
@@ -509,15 +629,12 @@
             if (estabelecimentoId) {
                 tr.querySelector('.select-estabelecimento').value = estabelecimentoId;
             }
-            if (cboId) {
-                tr.querySelector('.select-cbo').value = cboId;
-            }
 
             tr.querySelector('.btn-remover-vinculo').addEventListener('click', function() {
                 if (containerVinculos.querySelectorAll('tr').length > 1) {
                     tr.remove();
                 } else {
-                    alert('O profissional deve ter pelo menos um vínculo ativo.');
+                    alert('O profissional deve ter pelo menos uma unidade de lotação vinculada.');
                 }
             });
 
@@ -534,6 +651,17 @@
             document.getElementById('prof_nome').value = '';
             document.getElementById('prof_cpf').value = '';
             document.getElementById('prof_email').value = '';
+            
+            const selectProf = document.getElementById('prof_profissao');
+            selectProf.value = '';
+            selectProf.setAttribute('name', 'profissao');
+            document.getElementById('divOutraProfissao').style.display = 'none';
+            const inputOutra = document.getElementById('prof_outra_input');
+            inputOutra.value = '';
+            inputOutra.removeAttribute('name');
+            inputOutra.removeAttribute('required');
+
+            document.getElementById('prof_sigla_conselho').value = 'CRP';
             document.getElementById('prof_perfil').value = 'NIVEL_II';
             document.getElementById('prof_ativo').value = '1';
             document.getElementById('prof_registro').value = '';
@@ -554,6 +682,29 @@
             document.getElementById('prof_nome').value = prof.nome;
             document.getElementById('prof_cpf').value = prof.cpf ? formatarCPFString(prof.cpf) : '';
             document.getElementById('prof_email').value = prof.email;
+            
+            const selectProf = document.getElementById('prof_profissao');
+            const divOutra = document.getElementById('divOutraProfissao');
+            const inputOutra = document.getElementById('prof_outra_input');
+
+            inputOutra.removeAttribute('name');
+            inputOutra.removeAttribute('required');
+            selectProf.setAttribute('name', 'profissao');
+
+            let opcoesValidas = Array.from(selectProf.options).some(opt => opt.value === prof.profissao);
+            if (opcoesValidas || !prof.profissao) {
+                selectProf.value = prof.profissao || '';
+                divOutra.style.display = 'none';
+            } else {
+                selectProf.value = 'OUTRO';
+                selectProf.removeAttribute('name');
+                divOutra.style.display = 'block';
+                inputOutra.value = prof.profissao;
+                inputOutra.setAttribute('name', 'profissao');
+                inputOutra.setAttribute('required', 'true');
+            }
+
+            document.getElementById('prof_sigla_conselho').value = prof.sigla_conselho || 'CRP';
             document.getElementById('prof_perfil').value = prof.perfil || 'NIVEL_II';
             
             const statusAtivo = (prof.ativo === true || prof.ativo === 1 || prof.ativo === "1") ? '1' : '0';
@@ -567,24 +718,22 @@
             containerVinculos.innerHTML = '';
             if (prof.vinculos && prof.vinculos.length > 0) {
                 prof.vinculos.forEach(v => {
-                    adicionarLinhaVinculo(v.estabelecimento_id, v.cbo_id);
+                    adicionarLinhaVinculo(v.estabelecimento_id);
                 });
-            } else if (prof.estabelecimento_id && prof.cbo_id) {
-                adicionarLinhaVinculo(prof.estabelecimento_id, prof.cbo_id);
             } else {
                 adicionarLinhaVinculo();
             }
 
             const blocoAudit = document.getElementById('blocoAuditoriaProfissional');
-            const criadoPor = prof.criado_por_nome || prof.criador_nome || 'Sistema';
-            const criadoEm = prof.created_at || prof.data_criacao || '-';
-            const atualizadoPor = prof.atualizado_por_nome || prof.atualizador_nome || prof.ultima_atualizacao_por || null;
-            const atualizadoEm = prof.updated_at || prof.data_atualizacao || null;
+            const criadoPor = prof.criado_por_nome || 'Sistema';
+            const criadoEm = prof.created_at || '-';
+            const atualizadoPor = prof.atualizado_por_nome || null;
+            const atualizadoEm = prof.updated_at || null;
 
             document.getElementById('auditCriadoPor').innerText = criadoPor;
             document.getElementById('auditCriadoEm').innerText = criadoEm;
 
-            if (atualizadoPor && atualizadoPor !== 'None' && atualizadoPor !== 'null' && atualizadoPor !== '') {
+            if (atualizadoPor && atualizadoPor !== 'None') {
                 document.getElementById('auditAtualizadoPor').innerText = atualizadoPor;
                 document.getElementById('auditAtualizadoEm').innerText = atualizadoEm || '-';
             } else {

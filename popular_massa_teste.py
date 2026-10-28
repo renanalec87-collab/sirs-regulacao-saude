@@ -6,15 +6,13 @@ from werkzeug.security import generate_password_hash
 
 DB_PATH = os.path.join(os.path.dirname(__file__), 'database.db')
 
-# Nomes próprios reais para o primeiro nome
 primeiros_nomes = [
     'Ana', 'Carlos', 'Mariana', 'José', 'Juliana', 'Lucas', 'Fernanda', 'Marcos',
     'Camila', 'Bruno', 'Beatriz', 'Gabriel', 'Larissa', 'Rafael', 'Patrícia', 'Matheus',
     'Luciana', 'Rodrigo', 'Amanda', 'Felipe', 'Bruna', 'Thiago', 'Vanessa', 'Daniel',
-    'Renata', 'Alexandre', 'Tatiane', 'Eduardo', 'Camila', 'Leandro', 'Simone', 'Diego'
+    'Renata', 'Alexandre', 'Tatiane', 'Eduardo', 'Leandro', 'Simone', 'Diego'
 ]
 
-# Sobrenomes inspirados em medicamentos e frutas (mantendo o toque original)
 sobrenomes_fantasia = [
     'Paracetamol', 'Dipirona', 'Ibuprofeno', 'Omeprazol', 'Amoxicilina',
     'Losartana', 'Simvastatina', 'Metformina', 'Enalapril', 'Azitromicina',
@@ -22,13 +20,8 @@ sobrenomes_fantasia = [
     'Melancia', 'Uva', 'Laranja', 'Acerola', 'Limão', 'Pera', 'Manga', 'Goiaba'
 ]
 
+conselhos_possiveis = ['CRP', 'CRM', 'CRESS', 'COREN', 'CREFITO', 'CRF']
 sexos = ['Feminino', 'Masculino']
-
-# Novos CBOs para integrar na base se não existirem
-novos_cbos = [
-    {'codigo': '3222-05', 'ocupacao': 'Técnico de Enfermagem', 'min': 0, 'max': 120, 'conselho': 'COREN'},
-    {'codigo': '4110-10', 'ocupacao': 'Assistente Administrativo', 'min': 18, 'max': 120, 'conselho': 'MTE'}
-]
 
 def gerar_cpf():
     n = [random.randint(0, 9) for _ in range(9)]
@@ -47,7 +40,7 @@ def gerar_sus():
 
 def popular_massa():
     if not os.path.exists(DB_PATH):
-        print('Erro: database.db não encontrado. Execute o init_db.py primeiro.')
+        print('Erro: database.db não encontrado. Execute a inicialização primeiro.')
         return
 
     conn = sqlite3.connect(DB_PATH)
@@ -55,100 +48,92 @@ def popular_massa():
     conn.execute('PRAGMA foreign_keys = ON;')
     cursor = conn.cursor()
 
-    # 1. Garantir inserção dos novos CBOs
-    for cbo in novos_cbos:
-        existe = cursor.execute('SELECT id FROM cbos WHERE codigo = ?', (cbo['codigo'],)).fetchone()
-        if not existe:
-            cursor.execute(
-                """
-                INSERT INTO cbos (codigo, ocupacao, profissao, idade_minima, idade_maxima, sigla_conselho, meses_assiduidade)
-                VALUES (?, ?, ?, ?, ?, ?, 6)
-                """,
-                (cbo['codigo'], cbo['ocupacao'], cbo['ocupacao'], cbo['min'], cbo['max'], cbo['conselho'])
-            )
-    conn.commit()
-
-    # Carregar estabelecimentos e CBOs atualizados
+    # Busca os dados oficiais já cadastrados no init_db
     estabelecimentos = [
         dict(row) for row in cursor.execute('SELECT id, nome FROM estabelecimentos WHERE ativo = 1').fetchall()
     ]
     cids = [dict(row) for row in cursor.execute('SELECT id FROM cids').fetchall()]
+    
+    # Pega as especialidades ativas que geram lista de espera (SEM o campo sigla_conselho)
     cbos = [
-        dict(row) for row in cursor.execute('SELECT id, ocupacao, idade_minima, idade_maxima, sigla_conselho FROM cbos').fetchall()
+        dict(row) for row in cursor.execute('SELECT id, ocupacao, idade_minima, idade_maxima FROM cbos WHERE ativa = 1 AND gera_lista_espera = 1').fetchall()
     ]
 
     if not estabelecimentos or not cbos:
-        print('Erro: Unidades ou CBOs não encontrados no banco.')
+        print('Erro: Unidades ou CBOs oficiais não encontrados no banco.')
         conn.close()
         return
 
-    # 2. Criar 2 Profissionais (Nível I ou II) vinculados a CADA uma das unidades de saúde
-    print('Criando 2 profissionais por unidade de saúde...')
+    # Identificar IDs para Taboão e Mailasque para concentrar demanda
+    ids_alta_demanda = [e['id'] for e in estabelecimentos if any(termo in e['nome'].upper() for termo in ['TABOAO', 'MAILASQUE'])]
+    if not ids_alta_demanda:
+        ids_alta_demanda = [estabelecimentos[0]['id']]
+
+    # 2. Criar Profissionais vinculados às unidades utilizando a estrutura limpa e desacoplada
+    print('Criando profissionais vinculados...')
     senha_padrao_hash = generate_password_hash('Senha123')
     perfis_possiveis = ['NIVEL_I', 'NIVEL_II']
 
     for est in estabelecimentos:
-        for p_idx in range(1, 3):
+        qtd_prof = 6 if est['id'] in ids_alta_demanda else 2
+        for p_idx in range(1, qtd_prof + 1):
             cbo_adequado = random.choice(cbos)
             nome_prof = f'{random.choice(primeiros_nomes)} {random.choice(sobrenomes_fantasia)}'
             cpf_prof = gerar_cpf()
             email_prof = f'prof.{est["id"]}.{p_idx}.{random.randint(100,999)}@saude.sp.gov.br'.lower()
-            registro_prof = f'{random.randint(10000, 99999)}/{cbo_adequado["sigla_conselho"]}'
+            sigla_conselho_prof = random.choice(conselhos_possiveis)
+            registro_prof = f'{random.randint(10000, 99999)}/{sigla_conselho_prof}'
             perfil_escolhido = random.choice(perfis_possiveis)
+            profissao_nome = cbo_adequado['ocupacao']
 
             try:
                 cursor.execute(
                     """
                     INSERT INTO profissionais (
-                        nome, cpf, email, senha_hash, perfil, 
+                        nome, cpf, email, senha_hash, perfil, profissao, sigla_conselho,
                         registro_profissional, permite_terceirizadas, ativo, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     """,
-                    (nome_prof, cpf_prof, email_prof, senha_padrao_hash, perfil_escolhido, registro_prof)
+                    (nome_prof, cpf_prof, email_prof, senha_padrao_hash, perfil_escolhido, profissao_nome, sigla_conselho_prof, registro_prof)
                 )
                 prof_id = cursor.lastrowid
                 
-                # Criar vínculo na tabela profissional_unidades
+                # Inserção na tabela associativa sem cbo_id (vínculo puro N:N com unidade)
                 cursor.execute(
                     """
-                    INSERT INTO profissional_unidades (profissional_id, estabelecimento_id, cbo_id, ativo)
-                    VALUES (?, ?, ?, 1)
+                    INSERT INTO profissional_unidades (profissional_id, estabelecimento_id, ativo)
+                    VALUES (?, ?, 1)
                     """,
-                    (prof_id, est['id'], cbo_adequado['id'])
+                    (prof_id, est['id'])
                 )
-            except Exception:
+            except Exception as e:
+                print(f"Aviso ao inserir profissional: {e}")
                 pass
 
     conn.commit()
 
-    # Buscar todos os profissionais criados para associar nas ações
     profissionais_cadastrados = [
         dict(row) for row in cursor.execute('SELECT id FROM profissionais WHERE ativo = 1').fetchall()
     ]
 
-    if not profissionais_cadastrados:
-        print('Erro: Nenhum profissional foi gerado.')
-        conn.close()
-        return
-
-    # 3. Inserção de 1000 pacientes com nomes próprios e sobrenomes fantasiados
-    print('Iniciando a inserção de 1000 pacientes...')
+    # 3. Inserção de 5.000 pacientes
+    print('Iniciando a inserção de 5.000 pacientes...')
     novos_usuarios_ids = []
 
-    for i in range(1, 1001):
+    for i in range(1, 5001):
         nome = f'{random.choice(primeiros_nomes)} {random.choice(sobrenomes_fantasia)} {random.choice(sobrenomes_fantasia)}'
-        prontuario = f'P{7000 + i}'
+        prontuario = f'P{10000 + i}'
         cpf = gerar_cpf()
         sus = gerar_sus()
 
         tipo_idade = random.choices(
-            ['infantil', 'adolescente', 'adulto', 'idoso'], weights=[15, 20, 50, 15]
+            ['infantil', 'adolescente', 'adulto', 'idoso'], weights=[20, 20, 45, 15]
         )[0]
         ano_atual = datetime.now().year
         if tipo_idade == 'infantil':
-            ano = random.randint(ano_atual - 9, ano_atual)
+            ano = random.randint(ano_atual - 11, ano_atual)
         elif tipo_idade == 'adolescente':
-            ano = random.randint(ano_atual - 17, ano_atual - 10)
+            ano = random.randint(ano_atual - 17, ano_atual - 12)
         elif tipo_idade == 'adulto':
             ano = random.randint(ano_atual - 59, ano_atual - 18)
         else:
@@ -159,7 +144,12 @@ def popular_massa():
         mae = f'{random.choice(primeiros_nomes)} da Silva {random.choice(sobrenomes_fantasia)}'
         tel1 = f"119{random.randint(40000000, 99999999)}"
         tel2 = f"119{random.randint(40000000, 99999999)}" if random.choice([True, False]) else ''
-        est_id = random.choice(estabelecimentos)['id']
+        
+        if random.random() < 0.55 and ids_alta_demanda:
+            est_id = random.choice(ids_alta_demanda)
+        else:
+            est_id = random.choice(estabelecimentos)['id']
+
         prof_resp_id = random.choice(profissionais_cadastrados)['id']
 
         try:
@@ -180,19 +170,19 @@ def popular_massa():
     conn.commit()
     print(f'Sucesso! {len(novos_usuarios_ids)} pacientes cadastrados.')
 
-    # 4. Inserção de 800 registros na Lista de Espera diversificados
-    print('Iniciando a inserção de 800 registros na Lista de Espera...')
+    # 4. Inserção de 1.500 registros na Lista de Espera focada e concentrada
+    print('Iniciando a inserção de 1.500 registros na Lista de Espera...')
     todos_usuarios = [
-        dict(row) for row in cursor.execute('SELECT id, data_nascimento FROM usuarios').fetchall()
+        dict(row) for row in cursor.execute('SELECT id, data_nascimento, unidade_referencia_id FROM usuarios').fetchall()
     ]
 
     status_opcoes = ['Aguardando', 'Em Atendimento', 'Atendido / Finalizado', 'Cancelado / Desistência']
-    pesos_status = [45, 25, 20, 10]
+    pesos_status = [55, 20, 15, 10]
     niveis_servico = ['CAPS', 'AMBULATORIAL']
 
     inseridos_fila = 0
     tentativas = 0
-    while inseridos_fila < 800 and tentativas < 4000 and todos_usuarios:
+    while inseridos_fila < 1500 and tentativas < 8000 and todos_usuarios:
         tentativas += 1
         paciente = random.choice(todos_usuarios)
         nasc_str = paciente['data_nascimento']
@@ -221,13 +211,17 @@ def popular_massa():
         if cursor.fetchone():
             continue
 
-        est_solicitante = random.choice(estabelecimentos)['id']
+        if random.random() < 0.70 and ids_alta_demanda:
+            est_solicitante = random.choice(ids_alta_demanda)
+        else:
+            est_solicitante = paciente['unidade_referencia_id'] or random.choice(estabelecimentos)['id']
+
         cid_id = random.choice(cids)['id'] if cids else None
         prof_sorteado_id = random.choice(profissionais_cadastrados)['id']
         status_atual = random.choices(status_opcoes, weights=pesos_status)[0]
         nivel_servico = random.choice(niveis_servico)
 
-        dias_passados = random.randint(1, 400)
+        dias_passados = random.randint(5, 500)
         data_entrada = (datetime.now() - timedelta(days=dias_passados)).strftime('%Y-%m-%d %H:%M:%S')
 
         try:
@@ -243,7 +237,7 @@ def popular_massa():
                     paciente['id'], prof_sorteado_id, prof_sorteado_id, 
                     modalidade, nivel_servico, est_solicitante, 
                     cid_id, status_atual, data_entrada, 
-                    'Encaminhamento automatizado com diversificação de perfil.'
+                    'Demanda reprimida direcionada para planejamento territorial.'
                 )
             )
             inseridos_fila += 1
@@ -252,7 +246,7 @@ def popular_massa():
 
     conn.commit()
     conn.close()
-    print(f'Processo concluído com sucesso! {inseridos_fila} registros injetados na Lista de Espera.')
+    print(f'Processo concluído com sucesso! {inseridos_fila} registros injetados na Lista de Espera utilizando a tabela CBO oficial.')
 
 if __name__ == '__main__':
     popular_massa()

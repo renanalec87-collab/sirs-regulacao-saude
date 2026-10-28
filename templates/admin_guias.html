@@ -7,6 +7,10 @@
     <title>Gerenciamento de Guias e Manuais — CAPS II</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Importação do CSS do Editor Trumbowyg para texto rico -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Trumbowyg/2.27.3/ui/trumbowyg.min.css">
+
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f3f4f6; min-height: 100vh; display: flex; flex-direction: column; color: #1f2937; }
@@ -25,6 +29,10 @@
         .btn-purple { background-color: #692A85; color: white; border: none; }
         .btn-purple:hover { background-color: #521d6b; color: white; }
         .footer { text-align: center; padding: 14px 0; font-size: 12px; color: #6b7280; background-color: #e5e7eb; margin-top: auto; border-top: 1px solid #d1d5db; }
+        
+        /* Ajuste visual para o editor de texto integrado */
+        .trumbowyg-box { margin-top: 5px; border-radius: 6px; overflow: hidden; border-color: #dee2e6; }
+        .trumbowyg-modal { z-index: 1060; } /* Garante que o modal de links do editor fique acima do Bootstrap */
     </style>
 </head>
 <body>
@@ -39,14 +47,14 @@
                href="#" id="userMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(255,255,255,0.15);">
                 <div class="text-end me-2">
                     <span class="d-block fw-semibold text-white" style="font-size: 0.9rem;">{{ session.get('nome') }}</span>
-                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('perfil') }}</small>
+                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('profissao', 'Profissional') }}</small>
                 </div>
             </a>
 
-            <!-- Menu Flutuante (Dropdown) -->
+            <!-- Menu Flutuante -->
             <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-2" aria-labelledby="userMenuDropdown" style="min-width: 280px;">
                 <li><h6 class="dropdown-header text-uppercase text-secondary fw-bold" style="font-size: 0.75rem;">Acesso Atual</h6></li>
-                <li><span class="dropdown-item-text py-1 text-dark small"><strong>CBO:</strong> {{ session.get('ocupacao') }} ({{ session.get('cbo_codigo') }})</span></li>
+                <li><span class="dropdown-item-text py-1 text-dark small"><strong>Profissão:</strong> {{ session.get('profissao') or 'Não informada' }}</span></li>
                 <li><span class="dropdown-item-text py-1 text-dark small"><strong>Unidade:</strong> {{ session.get('estabelecimento') }}</span></li>
                 <li><span class="dropdown-item-text py-1 text-muted small">Último acesso: {{ session.get('ultimo_acesso', 'Agora') }}</span></li>
                 
@@ -241,8 +249,8 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-semibold small">Conteúdo / Orientações Técnicas (Aceita HTML básico)</label>
-                        <textarea class="form-control" name="conteudo_orientacao" id="conteudoOrientacao" rows="4"></textarea>
+                        <label class="form-label fw-semibold small">Conteúdo / Orientações Técnicas (Formatado)</label>
+                        <textarea class="form-control editor-trumbowyg" name="conteudo_orientacao" id="conteudoOrientacao" rows="4"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer bg-light">
@@ -253,22 +261,37 @@
         </div>
     </div>
 
-    <!-- MODAL: HISTÓRICO DE ACESSOS -->
+    <!-- MODAL: HISTÓRICO DE ACESSOS E AUDITORIA (PADRONIZADO) -->
     <div class="modal fade" id="modalHistoricoAcessos" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content p-3">
-                <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold">📊 Histórico de Acessos Recentes</h5>
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content p-3 shadow-lg border-0">
+                <div class="modal-header border-bottom pb-2 bg-light">
+                    <h5 class="modal-title fw-bold">📊 Histórico de Acessos e Auditoria</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <p class="text-muted small">Registros de conexões e seleções de unidades vinculadas ao seu perfil no sistema.</p>
-                    <div class="alert alert-light border small py-2 mb-0">
-                        Último registro capturado: <strong>{{ session.get('ultimo_acesso', 'Agora') }}</strong>
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">Registros de conexões e eventos do seu perfil restritos aos <strong>últimos 30 dias</strong> (ordem decrescente).</p>
+                    
+                    <div class="table-responsive border rounded" style="max-height: 380px; overflow-y: auto;">
+                        <table class="table table-hover table-striped align-middle mb-0 small">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th class="py-2">Data e Hora</th>
+                                    <th class="py-2">Ação / Evento</th>
+                                    <th class="py-2">Endereço IP (Origem)</th>
+                                    <th class="py-2">Unidade Envolvida</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-historico-corpo">
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">A carregar histórico...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-                <div class="modal-footer border-top-0 pt-0">
-                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Fechar</button>
+                <div class="modal-footer bg-light border-top">
+                    <button type="button" class="btn btn-secondary btn-sm px-4" data-bs-dismiss="modal">Fechar</button>
                 </div>
             </div>
         </div>
@@ -303,8 +326,32 @@
 
     <div class="footer">Intranet CAPS II — São Roque &copy; 2026.</div>
 
+    <!-- Scripts do Bootstrap, jQuery (necessário para o editor) e Trumbowyg -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Trumbowyg/2.27.3/trumbowyg.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Trumbowyg/2.27.3/langs/pt_br.min.js"></script>
+
     <script>
+        // Inicializa o editor de texto rico no textarea de orientações técnicas
+        $(document).ready(function() {
+            $('.editor-trumbowyg').trumbowyg({
+                lang: 'pt_br',
+                btns: [
+                    ['formatting'],
+                    ['strong', 'em', 'del'],
+                    ['superscript', 'subscript'],
+                    ['link'],
+                    ['justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull'],
+                    ['unorderedList', 'orderedList'],
+                    ['horizontalRule'],
+                    ['removeformat'],
+                    ['viewHTML']
+                ],
+                minimalLinks: true
+            });
+        });
+
         function abrirModalNovo() {
             document.getElementById('modalTitulo').innerText = 'Novo Guia / Manual';
             document.getElementById('guiaId').value = '';
@@ -313,7 +360,10 @@
             document.getElementById('categoria').value = '';
             document.getElementById('ativo').value = '1';
             document.getElementById('descricaoResumida').value = '';
-            document.getElementById('conteudoOrientacao').value = '';
+            
+            // Limpa o conteúdo e atualiza o editor visual
+            $('#conteudoOrientacao').trumbowyg('html', '');
+
             document.getElementById('secaoAnexosExistentes').style.display = 'none';
             document.getElementById('listaAnexosAtuais').innerHTML = '';
         }
@@ -326,7 +376,9 @@
             document.getElementById('categoria').value = guia.categoria || '';
             document.getElementById('ativo').value = guia.ativo;
             document.getElementById('descricaoResumida').value = guia.descricao_resumida || '';
-            document.getElementById('conteudoOrientacao').value = guia.conteudo_orientacao || '';
+            
+            // Insere o conteúdo formatado no editor visual Trumbowyg
+            $('#conteudoOrientacao').trumbowyg('html', guia.conteudo_orientacao || '');
             
             const secaoAnexos = document.getElementById('secaoAnexosExistentes');
             const listaAnexos = document.getElementById('listaAnexosAtuais');
@@ -367,6 +419,69 @@
                 form.action = `/admin/configuracoes/guias/excluir/${guiaId}`;
                 form.submit();
             }
+        }
+
+        // Script de Carregamento Dinâmico do Histórico de Acessos com Conversão e Fuso Corrigidos
+        const modalHistoricoEl = document.getElementById('modalHistoricoAcessos');
+        if (modalHistoricoEl) {
+            modalHistoricoEl.addEventListener('show.bs.modal', function () {
+                const tbody = document.getElementById('tabela-historico-corpo');
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">A carregar registros...</td></tr>';
+                
+                fetch('/api/historico-acessos')
+                    .then(response => response.json())
+                    .then(data => {
+                        const registros = Array.isArray(data) ? data : (data.historico || []);
+                        
+                        if (registros.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">Nenhum registro encontrado.</td></tr>';
+                            return;
+                        }
+                        
+                        let html = '';
+                        registros.forEach(item => {
+                            let badgeClass = 'bg-secondary';
+                            const acaoStr = item.acao || '';
+                            if (acaoStr === 'LOGIN') badgeClass = 'bg-success';
+                            else if (acaoStr.includes('TROCA')) badgeClass = 'bg-dark';
+
+                            let dataExibicao = item.data_acesso || item.data || '';
+                            
+                            if (dataExibicao && dataExibicao.includes('-')) {
+                                try {
+                                    const dataIso = dataExibicao.replace(' ', 'T');
+                                    const d = new Date(dataIso);
+                                    d.setHours(d.getHours() - 3);
+
+                                    const dia = String(d.getDate()).padStart(2, '0');
+                                    const mes = String(d.getMonth() + 1).padStart(2, '0');
+                                    const ano = d.getFullYear();
+                                    const hora = String(d.getHours()).padStart(2, '0');
+                                    const min = String(d.getMinutes()).padStart(2, '0');
+                                    const seg = String(d.getSeconds()).padStart(2, '0');
+
+                                    dataExibicao = `${dia}/${mes}/${ano} ${hora}:${min}:${seg}`;
+                                } catch (e) {
+                                    console.error("Erro ao formatar data:", e);
+                                }
+                            }
+
+                            html += `
+                                <tr>
+                                    <td class="fw-semibold">${dataExibicao}</td>
+                                    <td><span class="badge ${badgeClass} text-white px-2 py-1">${acaoStr}</span></td>
+                                    <td class="text-danger font-monospace">${item.ip_address || item.ip || '-'}</td>
+                                    <td>${item.estabelecimento_nome || item.unidade || '-'}</td>
+                                </tr>
+                            `;
+                        });
+                        tbody.innerHTML = html;
+                    })
+                    .catch(error => {
+                        console.error('Erro ao buscar histórico:', error);
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-3">Erro ao carregar os dados de auditoria.</td></tr>';
+                    });
+            });
         }
     </script>
 </body>

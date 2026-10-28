@@ -102,13 +102,14 @@
                href="#" id="userMenuDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="background: rgba(255,255,255,0.15);">
                 <div class="text-end me-2">
                     <span class="d-block fw-semibold text-white" style="font-size: 0.9rem;">{{ session.get('nome') }}</span>
-                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('perfil') }}</small>
+                    <small class="d-block text-light opacity-85" style="font-size: 0.75rem;">{{ session.get('profissao', 'Profissional') }}</small>
                 </div>
             </a>
 
+            <!-- Menu Flutuante (Dropdown) -->
             <ul class="dropdown-menu dropdown-menu-end shadow border-0 mt-2 p-2" aria-labelledby="userMenuDropdown" style="min-width: 280px;">
                 <li><h6 class="dropdown-header text-uppercase text-secondary fw-bold" style="font-size: 0.75rem;">Acesso Atual</h6></li>
-                <li><span class="dropdown-item-text py-1 text-dark small"><strong>CBO:</strong> {{ session.get('ocupacao') }} ({{ session.get('cbo_codigo') }})</span></li>
+                <li><span class="dropdown-item-text py-1 text-dark small"><strong>Profissão:</strong> {{ session.get('profissao') or 'Não informada' }}</span></li>
                 <li><span class="dropdown-item-text py-1 text-dark small"><strong>Unidade:</strong> {{ session.get('estabelecimento') }}</span></li>
                 <li><span class="dropdown-item-text py-1 text-muted small">Último acesso: {{ session.get('ultimo_acesso', 'Agora') }}</span></li>
                 
@@ -204,7 +205,7 @@
                     <span style="font-size: 13px; color: #4b5563; font-weight: 600;" id="resUnidadeRef">Unidade de Referência: -</span>
                 </div>
                 <div class="action-buttons">
-                    <button type="button" class="btn-edit" onclick="abrirModalEdicao()">Editar Cadastro</button>             
+                    <button type="button" class="btn-edit" onclick="abrirModalEdicao()">Editar Cadastro</button>           
                     <button type="button" class="btn-history" onclick="abrirModalHistorico()">Ver Histórico</button>
 
                     {% if perfil in ['NIVEL_I', 'NIVEL_II'] %}
@@ -355,7 +356,6 @@
                 <button type="button" class="btn-close-custom" onclick="fecharModalLista()">&times;</button>
             </div>
 
-            <!-- Alerta de Erro Visual Harmonioso -->
             <div id="msgErroModalFila" class="msg-erro-modal">
                 ⚠️ <span id="textoErroFila">Por favor, preencha corretamente todos os campos.</span>
             </div>
@@ -460,22 +460,39 @@
         </div>
     </div>
 
-    <!-- MODAL: HISTÓRICO DE ACESSOS -->
+    <!-- MODAL: HISTÓRICO DE ACESSOS E AUDITORIA (PADRONIZADO COM CORREÇÃO DE DATA E FUSO) -->
     <div class="modal fade" id="modalHistoricoAcessos" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content p-3">
-                <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold">📊 Histórico de Acessos Recentes</h5>
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header bg-light text-dark border-bottom">
+                    <h5 class="modal-title fw-bold">
+                        📊 Histórico de Acessos e Auditoria
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
-                    <p class="text-muted small">Registros de conexões e seleções de unidades vinculadas ao seu perfil no sistema.</p>
-                    <div class="alert alert-light border small py-2 mb-0">
-                        Último registro capturado: <strong>{{ session.get('ultimo_acesso', 'Agora') }}</strong>
+                <div class="modal-body p-4">
+                    <p class="text-muted small mb-3">Registros de conexões e eventos do seu perfil restritos aos <strong>últimos 30 dias</strong> (ordem decrescente).</p>
+                    
+                    <div class="table-responsive border rounded" style="max-height: 380px; overflow-y: auto;">
+                        <table class="table table-hover table-striped align-middle mb-0 small">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th class="py-2">Data e Hora</th>
+                                    <th class="py-2">Ação / Evento</th>
+                                    <th class="py-2">Endereço IP (Origem)</th>
+                                    <th class="py-2">Unidade Envolvida</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaHistoricoAcessosCorpo">
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-4">A carregar histórico...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-                <div class="modal-footer border-top-0 pt-0">
-                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal">Fechar</button>
+                <div class="modal-footer bg-light border-top">
+                    <button type="button" class="btn btn-secondary btn-sm px-4" data-bs-dismiss="modal">Fechar</button>
                 </div>
             </div>
         </div>
@@ -540,7 +557,6 @@
             const inputNasc = document.getElementById('searchNasc');
 
             if (origem === 'doc') {
-                // Remove qualquer caractere que não seja número para garantir busca indexada rápida
                 inputDoc.value = inputDoc.value.replace(/\D/g, '');
 
                 if (inputDoc.value.trim().length > 0) {
@@ -621,6 +637,67 @@
             }
         });
 
+        // Script de Carregamento Dinâmico do Histórico de Acessos com Conversão e Fuso Corrigidos
+        const modalHistoricoEl = document.getElementById('modalHistoricoAcessos');
+        if (modalHistoricoEl) {
+            modalHistoricoEl.addEventListener('show.bs.modal', function () {
+                const tbody = document.getElementById('tabelaHistoricoAcessosCorpo');
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">A carregar registros...</td></tr>';
+                
+                fetch('/api/historico-acessos')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">Nenhum registro encontrado.</td></tr>';
+                            return;
+                        }
+                        
+                        let html = '';
+                        data.forEach(item => {
+                            let badgeClass = 'bg-secondary';
+                            if (item.acao === 'LOGIN') badgeClass = 'bg-success';
+                            else if (item.acao.includes('TROCA')) badgeClass = 'bg-dark';
+
+                            let dataExibicao = item.data_acesso;
+                            
+                            // Converte a data para DD/MM/AAAA e corrige o fuso horário (subtrai 3 horas)
+                            if (dataExibicao && dataExibicao.includes('-')) {
+                                try {
+                                    const dataIso = dataExibicao.replace(' ', 'T');
+                                    const d = new Date(dataIso);
+                                    d.setHours(d.getHours() - 3);
+
+                                    const dia = String(d.getDate()).padStart(2, '0');
+                                    const mes = String(d.getMonth() + 1).padStart(2, '0');
+                                    const ano = d.getFullYear();
+                                    const hora = String(d.getHours()).padStart(2, '0');
+                                    const min = String(d.getMinutes()).padStart(2, '0');
+                                    const seg = String(d.getSeconds()).padStart(2, '0');
+
+                                    dataExibicao = `${dia}/${mes}/${ano} ${hora}:${min}:${seg}`;
+                                } catch (e) {
+                                    console.error("Erro ao formatar data:", e);
+                                }
+                            }
+
+                            html += `
+                                <tr>
+                                    <td class="fw-semibold">${dataExibicao}</td>
+                                    <td><span class="badge ${badgeClass} text-white px-2 py-1">${item.acao}</span></td>
+                                    <td class="text-danger font-monospace">${item.ip_address}</td>
+                                    <td>${item.estabelecimento_nome}</td>
+                                </tr>
+                            `;
+                        });
+                        tbody.innerHTML = html;
+                    })
+                    .catch(error => {
+                        console.error('Erro ao buscar histórico:', error);
+                        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-3">Erro ao carregar os dados de auditoria.</td></tr>';
+                    });
+            });
+        }
+
         function handleKeyPress(e) {
             if (e.key === 'Enter') {
                 executarBusca(1);
@@ -651,11 +728,15 @@
             const panel = document.getElementById('resultsPanel');
             const listaContainer = document.getElementById('listaCompletaContainer');
             
+            if (!doc && !nome && !nasc) {
+                alert('Por favor, informe ao menos um critério de busca (CPF/Prontuário, Nome/CNS ou Data de Nascimento).');
+                return;
+            }
+
             panel.style.display = 'none';
             listaContainer.style.display = 'none';
             paginaAtualGlobal = page;
 
-            // Enviamos os parâmetros atualizados para a API (incluindo a data de nascimento opcional)
             fetch(`/api/paciente/buscar?doc=${encodeURIComponent(doc)}&nome=${encodeURIComponent(nome)}&nasc=${encodeURIComponent(nasc)}&page=${page}`)
                 .then(response => response.json())
                 .then(data => {
@@ -669,7 +750,6 @@
                             panel.style.display = 'block';
                         } else {
                             let termoDescricao = doc ? `CPF/Prontuário: ${doc}` : (nome ? `Nome/CNS: ${nome}` : `Data Nasc: ${nasc}`);
-                            if (!doc && !nome && !nasc) termoDescricao = "Relação Geral";
                             exibirListaPacientes(data.dados, `Resultados da busca (${termoDescricao}) - Total: ${data.total_registros} registros`);
                         }
                     } else {
@@ -685,18 +765,39 @@
             return pront.toString().trim();
         }
 
+        function formatarDataHoraBR(dataStr) {
+            if (!dataStr) return 'Não informada';
+            
+            if (dataStr.includes(' ')) {
+                const partesGerais = dataStr.split(' ');
+                const dataPartes = partesGerais[0].split('-');
+                if (dataPartes.length === 3) {
+                    return `${dataPartes[2]}/${dataPartes[1]}/${dataPartes[0]} ${partesGerais[1]}`;
+                }
+            }
+            
+            const partes = dataStr.split('-');
+            if (partes.length === 3) {
+                return `${partes[2]}/${partes[1]}/${partes[0]}`;
+            }
+            return dataStr;
+        }
+
         function preencherPainelUnico(p) {
             document.getElementById('resNome').innerText = p.nome;
             document.getElementById('resProntuario').innerText = formatarProntuarioVisual(p.numero_prontuario);
             document.getElementById('resCPF').innerText = p.cpf_formatado || 'Não informado';
             document.getElementById('resSUS').innerText = p.cartao_sus_formatado || 'Não informado';
-            document.getElementById('resNasc').innerText = formatarDataBR(p.data_nascimento) || 'Não informada';
+            document.getElementById('resNasc').innerText = formatarDataHoraBR(p.data_nascimento) || 'Não informada';
             document.getElementById('resSexo').innerText = p.sexo || 'Não informado';
             document.getElementById('resMae').innerText = p.nome_mae || 'Não informado';
             document.getElementById('resTel').innerText = p.telefone_principal || 'Não informado';
             document.getElementById('resTelRecado').innerText = p.telefone_recado || 'Não informado';
             document.getElementById('resUnidadeRef').innerText = `Unidade de Referência: ${p.unidade_referencia_nome}`;
-            document.getElementById('resAudit').innerText = `Cadastrado em ${p.created_at} por ${p.criado_por_nome} | Última atualização em ${p.updated_at} por ${p.atualizado_por_nome}`;
+            
+            const criadoEmBR = formatarDataHoraBR(p.created_at);
+            const atualizadoEmBR = formatarDataHoraBR(p.updated_at);
+            document.getElementById('resAudit').innerText = `Cadastrado em ${criadoEmBR} por ${p.criado_por_nome || 'Sistema'} | Última atualização em ${atualizadoEmBR} por ${p.atualizado_por_nome || 'Sistema'}`;
         }
 
         function calcularIdadeAnos(dataNasc) {
@@ -717,15 +818,6 @@
             return ` (${idade} anos)`;
         }
 
-        function formatarDataBR(dataStr) {
-            if (!dataStr) return 'Não informada';
-            const partes = dataStr.split('-');
-            if (partes.length === 3) {
-                return `${partes[2]}/${partes[1]}/${partes[0]}`;
-            }
-            return dataStr;
-        }
-
         function exibirListaPacientes(pacientes, titulo) {
             const container = document.getElementById('cardsListaPacientes');
             document.getElementById('tituloListaResultados').innerText = `${titulo} (Página ${paginaAtualGlobal} de ${totalPaginasGlobal})`;
@@ -744,7 +836,7 @@
 
             pacientes.forEach((p, index) => {
                 const idadeFormatada = calcularIdade(p.data_nascimento);
-                const dataNascBR = formatarDataBR(p.data_nascimento);
+                const dataNascBR = formatarDataHoraBR(p.data_nascimento);
                 const cpfExibido = p.cpf_formatado || 'Não informado';
                 const cnsExibido = p.cartao_sus_formatado || 'Não informado';
                 const nomeMae = p.nome_mae || 'Não informada';
@@ -765,7 +857,7 @@
                         <p style="font-size: 13px; color: #4b5563; margin: 0;">
                             Mãe: <strong>${nomeMae}</strong> &bull; SUS: <strong>${cnsExibido}</strong>
                         </p>
-                        <p style="font-size: 13px; color: #6b7280; margin: 0;">
+                        <p style="font-size: 13px; color: #692A85; margin: 0;">
                             Tel: <strong>${telPrin}</strong> | Recado: <strong>${telRec}</strong>
                         </p>
                     </div>
@@ -1110,7 +1202,7 @@
                     tr.innerHTML = `
                         <td style="padding: 12px; font-weight: 600; color: #1f2937;">${item.especialidade}</td>
                         <td style="padding: 12px;">${badgeStatus}</td>
-                        <td style="padding: 12px; color: #4b5563;">${formatarDataBR(item.data_inicio)}</td>
+                        <td style="padding: 12px; color: #4b5563;">${formatarDataHoraBR(item.data_inicio)}</td>
                         <td style="padding: 12px;">${badgeAssiduidade}</td>
                     `;
                     tbody.appendChild(tr);

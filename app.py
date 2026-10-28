@@ -34,78 +34,12 @@ def allowed_file(filename, allowed_set):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_set
 
 
-# --- CONEXÃO COM O BANCO DE DADOS (COM TIMEOUT DE 10S PARA EVITAR LOCK) ---
+# --- CONEXÃO COM O BANCO DE DADOS ---
 def get_db_connection():
     conn = sqlite3.connect(DB_PATH, timeout=10.0)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA foreign_keys = ON;')
     return conn
-
-
-# --- GARANTE AS COLUNAS DE AUDITORIA E CONFIGURAÇÕES NAS TABELAS ---
-def garantir_colunas_auditoria():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cols_prof = [
-        col['name']
-        for col in cursor.execute('PRAGMA table_info(profissionais)').fetchall()
-    ]
-    if 'criado_por_profissional_id' not in cols_prof:
-        cursor.execute(
-            'ALTER TABLE profissionais ADD COLUMN criado_por_profissional_id INTEGER'
-        )
-    if 'atualizado_por_profissional_id' not in cols_prof:
-        cursor.execute(
-            'ALTER TABLE profissionais ADD COLUMN atualizado_por_profissional_id INTEGER'
-        )
-    if 'created_at' not in cols_prof:
-        cursor.execute('ALTER TABLE profissionais ADD COLUMN created_at TIMESTAMP')
-    if 'updated_at' not in cols_prof:
-        cursor.execute('ALTER TABLE profissionais ADD COLUMN updated_at TIMESTAMP')
-
-    cols_estab = [
-        col['name']
-        for col in cursor.execute('PRAGMA table_info(estabelecimentos)').fetchall()
-    ]
-    if 'criado_por_profissional_id' not in cols_estab:
-        cursor.execute(
-            'ALTER TABLE estabelecimentos ADD COLUMN criado_por_profissional_id INTEGER'
-        )
-    if 'atualizado_por_profissional_id' not in cols_estab:
-        cursor.execute(
-            'ALTER TABLE estabelecimentos ADD COLUMN atualizado_por_profissional_id INTEGER'
-        )
-    if 'created_at' not in cols_estab:
-        cursor.execute('ALTER TABLE estabelecimentos ADD COLUMN created_at TIMESTAMP')
-    if 'updated_at' not in cols_estab:
-        cursor.execute('ALTER TABLE estabelecimentos ADD COLUMN updated_at TIMESTAMP')
-
-    cols_cbos = [
-        col['name']
-        for col in cursor.execute('PRAGMA table_info(cbos)').fetchall()
-    ]
-    if 'ativa' not in cols_cbos:
-        cursor.execute('ALTER TABLE cbos ADD COLUMN ativa INTEGER DEFAULT 1')
-    if 'gera_lista_espera' not in cols_cbos:
-        cursor.execute(
-            'ALTER TABLE cbos ADD COLUMN gera_lista_espera INTEGER DEFAULT 1'
-        )
-    if 'meses_assiduidade' not in cols_cbos:
-        cursor.execute(
-            'ALTER TABLE cbos ADD COLUMN meses_assiduidade INTEGER DEFAULT 6'
-        )
-    if 'idade_minima' not in cols_cbos:
-        cursor.execute('ALTER TABLE cbos ADD COLUMN idade_minima INTEGER')
-    if 'idade_maxima' not in cols_cbos:
-        cursor.execute('ALTER TABLE cbos ADD COLUMN idade_maxima INTEGER')
-
-    conn.commit()
-    conn.close()
-
-
-with app.app_context():
-    garantir_colunas_auditoria()
 
 
 # --- FUNÇÃO AUXILIAR DE CÁLCULO DE IDADE ---
@@ -205,21 +139,20 @@ def index():
     return redirect(url_for('login'))
 
 
-# --- FUNÇÃO AUXILIAR PARA CONFIGURAR A SESSÃO DO PROFISSIONAL EM UMA UNIDADE/CBO ---
-def iniciar_sessao_profissional(profissional_id, vinculo_id):
+# --- CONFIGURAR SESSÃO DO PROFISSIONAL ---
+def iniciar_sessao_profissional(profissional_id, vinculo_id, acao_tipo='LOGIN'):
     conn = get_db_connection()
     cursor = conn.cursor()
 
     cursor.execute('SELECT * FROM profissionais WHERE id = ?', (profissional_id,))
     prof = cursor.fetchone()
 
+    # Consulta de vínculo atualizada (sem cbo_id)
     cursor.execute("""
         SELECT pu.id AS vinculo_id, e.id AS estabelecimento_id, e.nome AS estabelecimento_nome, 
-               e.tipo AS estabelecimento_tipo, c.id AS cbo_id, c.codigo AS cbo_codigo, c.ocupacao AS cbo_ocupacao,
-               c.sigla_conselho AS cbo_conselho
+               e.tipo AS estabelecimento_tipo
         FROM profissional_unidades pu
         JOIN estabelecimentos e ON pu.estabelecimento_id = e.id
-        JOIN cbos c ON pu.cbo_id = c.id
         WHERE pu.id = ? AND pu.profissional_id = ?
     """, (vinculo_id, profissional_id))
     vinculo = cursor.fetchone()
@@ -239,29 +172,34 @@ def iniciar_sessao_profissional(profissional_id, vinculo_id):
         ORDER BY data_acesso DESC LIMIT 1
     """, (profissional_id,)).fetchone()
     
-    ultimo_acesso_str = ultimo_acg['data_acesso'] if ultimo_acg else 'Primeiro acesso'
+    ultimo_acesso_str = 'Primeiro acesso'
+    if ultimo_acg and ultimo_acg['data_acesso']:
+        try:
+            dt_parse = datetime.strptime(str(ultimo_acg['data_acesso']).split('.')[0], '%Y-%m-%d %H:%M:%S')
+            ultimo_acesso_str = dt_parse.strftime('%d/%m/%Y %H:%M:%S')
+        except:
+            ultimo_acesso_str = str(ultimo_acg['data_acesso'])
 
     ip_cliente = request.remote_addr
+    # Histórico de acessos sem cbo_id
     cursor.execute("""
-        INSERT INTO historico_acessos (profissional_id, estabelecimento_id, cbo_id, ip_address)
+        INSERT INTO historico_acessos (profissional_id, estabelecimento_id, ip_address, acao)
         VALUES (?, ?, ?, ?)
-    """, (profissional_id, vinculo['estabelecimento_id'], vinculo['cbo_id'], ip_cliente))
+    """, (profissional_id, vinculo['estabelecimento_id'], ip_cliente, acao_tipo))
     conn.commit()
     conn.close()
 
     session['usuario_id'] = prof['id']
     session['nome'] = prof['nome']
     session['perfil'] = prof['perfil']
-    session['permite_terceirizadas'] = prof['permite_terceirizadas']
+    session['profissao'] = prof['profissao'] or 'Profissional'
+    session['sigla_conselho'] = prof['sigla_conselho'] or ''
     session['registro_profissional'] = prof['registro_profissional'] or ''
     
     session['vinculo_id'] = vinculo['vinculo_id']
     session['estabelecimento'] = vinculo['estabelecimento_nome']
     session['estabelecimento_id'] = vinculo['estabelecimento_id']
     session['estabelecimento_tipo'] = vinculo['estabelecimento_tipo']
-    session['ocupacao'] = vinculo['cbo_ocupacao']
-    session['cbo_codigo'] = vinculo['cbo_codigo']
-    session['sigla_conselho'] = vinculo['cbo_conselho'] or ''
     session['total_unidades'] = total_unidades
     session['ultimo_acesso'] = ultimo_acesso_str
 
@@ -305,22 +243,22 @@ def login():
         if profissional and check_password_hash(profissional['senha_hash'], senha):
             profissional_id = profissional['id']
             
+            # Busca de vínculos sem cbo_id
             cursor.execute("""
-                SELECT pu.id AS vinculo_id, e.nome AS estabelecimento_nome, c.ocupacao AS cbo_ocupacao, c.codigo AS cbo_codigo
+                SELECT pu.id AS vinculo_id, e.nome AS estabelecimento_nome
                 FROM profissional_unidades pu
                 JOIN estabelecimentos e ON pu.estabelecimento_id = e.id
-                JOIN cbos c ON pu.cbo_id = c.id
                 WHERE pu.profissional_id = ? AND pu.ativo = 1
             """, (profissional_id,))
             vinculos = cursor.fetchall()
             conn.close()
 
             if not vinculos:
-                flash('Profissional sem unidades ou especialidades vinculadas no sistema.', 'danger')
+                flash('Profissional sem unidades vinculadas no sistema.', 'danger')
                 return render_template('login.html', campanhas=campanhas)
 
             if len(vinculos) == 1:
-                iniciar_sessao_profissional(profissional_id, vinculos[0]['vinculo_id'])
+                iniciar_sessao_profissional(profissional_id, vinculos[0]['vinculo_id'], 'LOGIN')
                 flash('Login efetuado com sucesso!', 'success')
                 return redirect(url_for('dashboard'))
             else:
@@ -332,11 +270,11 @@ def login():
 
     return render_template('login.html', campanhas=campanhas)
 
-
 @app.route('/selecionar-unidade', methods=['GET', 'POST'])
 def selecionar_unidade():
     profissional_id = session.get('pre_auth_profissional_id')
     if not profissional_id:
+        flash('Por favor, faça o login primeiro.', 'warning')
         return redirect(url_for('login'))
 
     conn = get_db_connection()
@@ -344,7 +282,7 @@ def selecionar_unidade():
 
     if request.method == 'POST':
         vinculo_id = request.form.get('vinculo_id')
-        if iniciar_sessao_profissional(profissional_id, vinculo_id):
+        if iniciar_sessao_profissional(profissional_id, vinculo_id, 'TROCA DE UNIDADE'):
             session.pop('pre_auth_profissional_id', None)
             conn.close()
             flash('Acesso e unidade selecionados com sucesso!', 'success')
@@ -352,21 +290,21 @@ def selecionar_unidade():
         else:
             flash('Vínculo inválido ou não autorizado.', 'danger')
 
+    # Busca o nome e garante que não venha vazio
     cursor.execute('SELECT nome FROM profissionais WHERE id = ?', (profissional_id,))
     prof = cursor.fetchone()
+    nome_profissional = prof['nome'] if prof and prof['nome'] else 'Usuário'
 
     cursor.execute("""
-        SELECT pu.id AS vinculo_id, e.nome AS estabelecimento_nome, c.ocupacao AS cbo_ocupacao, c.codigo AS cbo_codigo
+        SELECT pu.id AS vinculo_id, e.nome AS estabelecimento_nome
         FROM profissional_unidades pu
         JOIN estabelecimentos e ON pu.estabelecimento_id = e.id
-        JOIN cbos c ON pu.cbo_id = c.id
         WHERE pu.profissional_id = ? AND pu.ativo = 1
     """, (profissional_id,))
     vinculos = [dict(row) for row in cursor.fetchall()]
     conn.close()
 
-    return render_template('selecionar_unidade.html', nome_profissional=prof['nome'] if prof else '', vinculos=vinculos)
-
+    return render_template('selecionar_unidade.html', nome_profissional=nome_profissional, vinculos=vinculos)
 
 @app.route('/trocar-unidade', methods=['GET'])
 @login_required
@@ -380,6 +318,40 @@ def logout():
     session.clear()
     flash('Sessão encerrada com sucesso.', 'info')
     return redirect(url_for('login'))
+
+# --- API DE HISTÓRICO DE ACESSOS (ÚLTIMOS 30 DIAS) ---
+@app.route('/api/historico-acessos', methods=['GET'])
+@login_required
+def api_historico_acessos():
+    profissional_id = session.get('usuario_id')
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        historico = cursor.execute("""
+            SELECT ha.data_acesso, ha.acao, ha.ip_address, e.nome AS estabelecimento_nome
+            FROM historico_acessos ha
+            LEFT JOIN estabelecimentos e ON ha.estabelecimento_id = e.id
+            WHERE ha.profissional_id = ?
+            ORDER BY ha.data_acesso DESC
+            LIMIT 50
+        """, (profissional_id,)).fetchall()
+        
+        dados = []
+        for h in historico:
+            dados.append({
+                'data_acesso': str(h['data_acesso']).split('.')[0],
+                'acao': h['acao'] or 'LOGIN',
+                'ip_address': h['ip_address'] or '127.0.0.1',
+                'estabelecimento_nome': h['estabelecimento_nome'] or 'Unidade não informada'
+            })
+    except Exception as e:
+        print(f"Erro ao buscar histórico de acessos: {e}")
+        dados = []
+    finally:
+        conn.close()
+        
+    return jsonify(dados)
 
 @app.route('/dashboard')
 @login_required
@@ -411,6 +383,7 @@ def dashboard():
         cbos=cbos,
     )
 
+
 @app.route('/api/cids/buscar', methods=['GET'])
 @login_required
 def api_buscar_cids():
@@ -441,6 +414,14 @@ def buscar_paciente():
     termo_doc = request.args.get('doc', '').strip()
     termo_nome = request.args.get('nome', '').strip()
     termo_nasc = request.args.get('nasc', '').strip()
+    
+    if not termo_doc and not termo_nome and not termo_nasc:
+        return jsonify({
+            'sucesso': False,
+            'encontrado': False,
+            'mensagem': 'Por favor, informe ao menos um critério de busca.'
+        }), 400
+
     page = int(request.args.get('page', 1))
     per_page = 50
     offset = (page - 1) * per_page
@@ -452,14 +433,12 @@ def buscar_paciente():
     filtro_sql = ''
     params = []
 
-    # Se a primeira barra (doc) foi preenchida, busca estritamente por CPF ou Prontuário
     if termo_doc:
         doc_limpo = ''.join(filter(str.isdigit, termo_doc))
         if doc_limpo:
             filtro_sql += ' AND (u.cpf LIKE ? OR u.numero_prontuario LIKE ?)'
             params.extend([f'%{doc_limpo}%', f'%{doc_limpo}%'])
     
-    # Se a segunda barra (nome/cns/nascimento) foi preenchida
     elif termo_nome or termo_nasc:
         if termo_nome:
             cns_limpo = ''.join(filter(str.isdigit, termo_nome))
@@ -786,6 +765,7 @@ def inserir_lista_espera():
         conn.close()
     return redirect(url_for('ver_lista_espera'))
 
+
 @app.route('/lista-espera/atualizar-status', methods=['POST'])
 @login_required
 @nivel_ii_required
@@ -868,6 +848,7 @@ def atualizar_status_lista():
         conn.close()
     return redirect(url_for('ver_lista_espera'))
 
+
 @app.route('/guias-fluxo')
 @login_required
 def guias_fluxo():
@@ -883,7 +864,6 @@ def guias_fluxo():
         guias.append(guia_dict)
     conn.close()
     return render_template('guias_fluxo.html', guias=guias)
-
 
 @app.route('/admin/profissionais', methods=['GET'])
 @login_required
@@ -919,12 +899,12 @@ def listar_profissionais():
     for p in profissionais_raw:
         prof_dict = dict(p)
         
+        # Consulta de múltiplos vínculos sem amarra de cbo_id
         vinculos_raw = cursor.execute("""
-            SELECT pu.id AS vinculo_id, pu.estabelecimento_id, pu.cbo_id,
-                   e.nome AS estabelecimento_nome, c.ocupacao AS cbo_ocupacao, c.sigla_conselho AS cbo_conselho
+            SELECT pu.id AS vinculo_id, pu.estabelecimento_id,
+                   e.nome AS estabelecimento_nome
             FROM profissional_unidades pu
             JOIN estabelecimentos e ON pu.estabelecimento_id = e.id
-            JOIN cbos c ON pu.cbo_id = c.id
             WHERE pu.profissional_id = ? AND pu.ativo = 1
         """, (prof_dict['id'],)).fetchall()
         
@@ -932,19 +912,11 @@ def listar_profissionais():
         
         if prof_dict['vinculos']:
             prof_dict['estabelecimento_nome'] = ", ".join([v['estabelecimento_nome'] for v in prof_dict['vinculos']])
-            prof_dict['cbo_ocupacao'] = ", ".join([v['cbo_ocupacao'] for v in prof_dict['vinculos']])
-            prof_dict['cbo_conselho'] = prof_dict['vinculos'][0]['cbo_conselho']
         else:
             prof_dict['estabelecimento_nome'] = "Não informada"
-            prof_dict['cbo_ocupacao'] = "Não informada"
-            prof_dict['cbo_conselho'] = "-"
             
         profissionais.append(prof_dict)
 
-    cbos = [
-        dict(row)
-        for row in cursor.execute('SELECT id, codigo, ocupacao, sigla_conselho FROM cbos ORDER BY ocupacao ASC').fetchall()
-    ]
     estabelecimentos = [
         dict(row)
         for row in cursor.execute('SELECT id, nome FROM estabelecimentos WHERE ativo = 1 ORDER BY nome ASC').fetchall()
@@ -954,13 +926,11 @@ def listar_profissionais():
     return render_template(
         'admin_profissionais.html',
         profissionais=profissionais,
-        cbos=cbos,
         estabelecimentos=estabelecimentos,
         pagina_atual=page,
         total_paginas=total_paginas,
         total_registros=total_registros,
     )
-
 
 @app.route('/admin/profissionais/salvar', methods=['POST'])
 @login_required
@@ -982,6 +952,8 @@ def salvar_profissional():
             return redirect(url_for('listar_profissionais'))
 
     perfil = request.form.get('perfil', 'NIVEL_II')
+    profissao = request.form.get('profissao', '').strip()
+    sigla_conselho = request.form.get('sigla_conselho', '').strip().upper()
     registro_profissional = request.form.get('registro_profissional', '').strip()
     permite_terceirizadas = (
         1 if request.form.get('permite_terceirizadas') == 'on' else 0
@@ -990,20 +962,30 @@ def salvar_profissional():
     usuario_logado_id = session.get('usuario_id')
 
     estabelecimento_ids = request.form.getlist('estabelecimento_ids[]')
-    cbo_ids = request.form.getlist('cbo_ids[]')
 
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
         if profissional_id:
+            # === VERIFICAÇÃO DE DUPLICIDADE SEGURA NA EDIÇÃO ===
+            duplicado = cursor.execute("""
+                SELECT id FROM profissionais 
+                WHERE (cpf = ? OR email = ?) AND id != ?
+            """, (cpf, email, profissional_id)).fetchone()
+            
+            if duplicado:
+                conn.close()
+                flash('Erro: Já existe outro profissional cadastrado com este CPF ou E-mail.', 'danger')
+                return redirect(url_for('listar_profissionais'))
+
             if senha:
                 senha_hash = generate_password_hash(senha)
                 cursor.execute(
                     """
                         UPDATE profissionais 
                         SET nome = ?, cpf = ?, email = ?, senha_hash = ?, perfil = ?, 
-                            registro_profissional = ?, permite_terceirizadas = ?, 
-                            ativo = ?, atualizado_por_profissional_id = ?, updated_at = CURRENT_TIMESTAMP
+                            profissao = ?, sigla_conselho = ?, registro_profissional = ?, 
+                            permite_terceirizadas = ?, ativo = ?, atualizado_por_profissional_id = ?, updated_at = CURRENT_TIMESTAMP
                         WHERE id = ?
                     """,
                     (
@@ -1012,6 +994,8 @@ def salvar_profissional():
                         email,
                         senha_hash,
                         perfil,
+                        profissao or None,
+                        sigla_conselho or None,
                         registro_profissional or None,
                         permite_terceirizadas,
                         ativo,
@@ -1024,8 +1008,8 @@ def salvar_profissional():
                     """
                         UPDATE profissionais 
                         SET nome = ?, cpf = ?, email = ?, perfil = ?, 
-                            registro_profissional = ?, permite_terceirizadas = ?, 
-                            ativo = ?, atualizado_por_profissional_id = ?, updated_at = CURRENT_TIMESTAMP
+                            profissao = ?, sigla_conselho = ?, registro_profissional = ?, 
+                            permite_terceirizadas = ?, ativo = ?, atualizado_por_profissional_id = ?, updated_at = CURRENT_TIMESTAMP
                         WHERE id = ?
                     """,
                     (
@@ -1033,6 +1017,8 @@ def salvar_profissional():
                         cpf,
                         email,
                         perfil,
+                        profissao or None,
+                        sigla_conselho or None,
                         registro_profissional or None,
                         permite_terceirizadas,
                         ativo,
@@ -1040,23 +1026,23 @@ def salvar_profissional():
                         profissional_id,
                     ),
                 )
-            
-            cursor.execute('UPDATE profissional_unidades SET ativo = 0 WHERE profissional_id = ?', (profissional_id,))
-            
-            for est_id, cbo_id in zip(estabelecimento_ids, cbo_ids):
-                if est_id and cbo_id:
+                                                  
+            for est_id in estabelecimento_ids:
+                if est_id:
                     vinculo_existente = cursor.execute("""
                         SELECT id FROM profissional_unidades 
-                        WHERE profissional_id = ? AND estabelecimento_id = ? AND cbo_id = ?
-                    """, (profissional_id, est_id, cbo_id)).fetchone()
+                        WHERE profissional_id = ? AND estabelecimento_id = ?
+                    """, (profissional_id, est_id)).fetchone()
                     
                     if vinculo_existente:
+                        # Se já existe (mesmo inativo), reativa/mantém ativo
                         cursor.execute('UPDATE profissional_unidades SET ativo = 1 WHERE id = ?', (vinculo_existente['id'],))
                     else:
+                        # Se não existe, insere o novo vínculo
                         cursor.execute("""
-                            INSERT INTO profissional_unidades (profissional_id, estabelecimento_id, cbo_id, ativo)
-                            VALUES (?, ?, ?, 1)
-                        """, (profissional_id, est_id, cbo_id))
+                            INSERT INTO profissional_unidades (profissional_id, estabelecimento_id, ativo)
+                            VALUES (?, ?, 1)
+                        """, (profissional_id, est_id))
 
             flash('Profissional atualizado com sucesso!', 'success')
         else:
@@ -1068,11 +1054,11 @@ def salvar_profissional():
             cursor.execute(
                 """
                 INSERT INTO profissionais (
-                    nome, cpf, email, senha_hash, perfil, 
+                    nome, cpf, email, senha_hash, perfil, profissao, sigla_conselho, 
                     registro_profissional, permite_terceirizadas, ativo, 
                     criado_por_profissional_id, atualizado_por_profissional_id, created_at, updated_at
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 """,
                 (
                     nome,
@@ -1080,6 +1066,8 @@ def salvar_profissional():
                     email,
                     senha_hash,
                     perfil,
+                    profissao or None,
+                    sigla_conselho or None,
                     registro_profissional or None,
                     permite_terceirizadas,
                     ativo,
@@ -1088,14 +1076,14 @@ def salvar_profissional():
                 ),
             )
             
-            profissional_id = cursor.execute('SELECT last_insert_rowid()').fetchone()[0]
+            profissional_id = cursor.lastrowid
 
-            for est_id, cbo_id in zip(estabelecimento_ids, cbo_ids):
-                if est_id and cbo_id:
+            for est_id in estabelecimento_ids:
+                if est_id:
                     cursor.execute("""
-                        INSERT INTO profissional_unidades (profissional_id, estabelecimento_id, cbo_id, ativo)
-                        VALUES (?, ?, ?, 1)
-                    """, (profissional_id, est_id, cbo_id))
+                        INSERT INTO profissional_unidades (profissional_id, estabelecimento_id, ativo)
+                        VALUES (?, ?, 1)
+                    """, (profissional_id, est_id))
 
             flash('Profissional cadastrado com sucesso!', 'success')
             
@@ -1117,22 +1105,22 @@ def salvar_profissional():
 def listar_estabelecimentos():
     conn = get_db_connection()
     cursor = conn.cursor()
+    
     estabelecimentos = [
         dict(row)
         for row in cursor.execute("""
-        SELECT e.*, 
-               p_criou.nome AS criado_por_nome,
-               p_at.nome AS atualizado_por_nome
-        FROM estabelecimentos e
-        LEFT JOIN profissionais p_criou ON e.criado_por_profissional_id = p_criou.id
-        LEFT JOIN profissionais p_at ON e.atualizado_por_profissional_id = p_at.id
-        ORDER BY e.nome ASC
-    """).fetchall()
+            SELECT e.*, 
+                   p1.nome AS criado_por_nome, 
+                   p2.nome AS atualizado_por_nome
+            FROM estabelecimentos e
+            LEFT JOIN profissionais p1 ON e.criado_por_profissional_id = p1.id
+            LEFT JOIN profissionais p2 ON e.atualizado_por_profissional_id = p2.id
+            ORDER BY e.nome ASC
+        """).fetchall()
     ]
+    
     conn.close()
-    return render_template(
-        'admin_estabelecimentos.html', estabelecimentos=estabelecimentos
-    )
+    return render_template('admin_estabelecimentos.html', estabelecimentos=estabelecimentos)
 
 
 @app.route('/admin/estabelecimentos/salvar', methods=['POST'])
@@ -1317,8 +1305,8 @@ def relatorios():
     estabelecimentos = [
         dict(row)
         for row in cursor.execute(
-            'SELECT id, nome FROM estabelecimentos WHERE ativo = 1 ORDER BY nome'
-            ' ASC'
+            'SELECT id, nome FROM estabelecimentos WHERE ativo = 1 ORDER BY'
+            ' nome ASC'
         ).fetchall()
     ]
     modalidades = [
@@ -1382,13 +1370,13 @@ def api_relatorios_mapa():
         'CENTRO DE SAUDE II': [-23.529892, -47.132510],
         'DEPARTAMENTO DE SAUDE': [-23.541973, -47.129337],
         'FARMACIA CENTRAL': [-23.529892, -47.132510],
-        'GOIANA': [-23.554126, -47.147340],          
+        'GOIANA': [-23.554126, -47.147340],     
         'GUACU': [-23.519083, -47.141246],
         'HOSPITAL SANTA CASA': [-23.537575, -47.138604],
         'MAYLASKY': [-23.557459, -47.090049],
         'MAYLASKY-ESPECIALIDADES': [-23.558604, -47.093887],
         'SABOO': [-23.465941, -47.155775],
-        'SAO JOAO NOVO': [-23.540390, -47.036600],      
+        'SAO JOAO NOVO': [-23.540390, -47.036600],     
         'SISO': [-23.532137, -47.137198],
         'TABOAO': [-23.545165, -47.123766],
         'VILA NOVA': [-23.523544, -47.154396],
@@ -1837,7 +1825,7 @@ def salvar_guia():
                     logo_path_db,
                 ),
             )
-            id_alvo = cursor.execute('SELECT last_insert_rowid()').fetchone()[0]
+            id_alvo = cursor.lastrowid
             flash('Guia cadastrado com sucesso!', 'success')
 
         if 'pdf_files' in request.files:

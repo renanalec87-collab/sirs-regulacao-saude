@@ -1,6 +1,5 @@
 ﻿from datetime import datetime
 import os
-import random
 import sqlite3
 from werkzeug.security import generate_password_hash
 
@@ -8,17 +7,15 @@ DB_PATH = os.path.join(os.path.dirname(__file__), 'database.db')
 
 
 def inicializar_banco():
-    # Remove o banco antigo se existir para garantir a recriação limpa
     if os.path.exists(DB_PATH):
         os.remove(DB_PATH)
 
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    # Habilita chaves estrangeiras
     cursor.execute('PRAGMA foreign_keys = ON;')
 
-    # 1. Tabela de Estabelecimentos de Saúde
+    # 1. Tabela de Estabelecimentos
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS estabelecimentos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,18 +23,21 @@ def inicializar_banco():
             nome TEXT NOT NULL,
             tipo TEXT NOT NULL,
             ativo INTEGER DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            criado_por_profissional_id INTEGER,
+            atualizado_por_profissional_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (criado_por_profissional_id) REFERENCES profissionais(id),
+            FOREIGN KEY (atualizado_por_profissional_id) REFERENCES profissionais(id)
         );
     """)
 
-    # 2. Tabela de CBOs / Especialidades (Atualizada com 'ativa' e 'gera_lista_espera')
+    # 2. Tabela de CBOs / Especialidades da Fila (SEM CONSELHO OBRIGATÓRIO, FOCO EM REGRAS DE FILA)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS cbos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             codigo TEXT UNIQUE NOT NULL,
             ocupacao TEXT NOT NULL,
-            profissao TEXT,
-            sigla_conselho TEXT,
             idade_minima INTEGER,
             idade_maxima INTEGER,
             meses_assiduidade INTEGER DEFAULT 6,
@@ -58,7 +58,7 @@ def inicializar_banco():
         );
     """)
 
-    # 4. Tabela de Profissionais
+    # 4. Tabela de Profissionais (Guarda Cargo, Conselho e Registro Individual)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS profissionais (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,33 +67,38 @@ def inicializar_banco():
             email TEXT UNIQUE NOT NULL,
             senha_hash TEXT NOT NULL,
             perfil TEXT NOT NULL,
+            profissao TEXT,
+            sigla_conselho TEXT,
             registro_profissional TEXT,
             permite_terceirizadas INTEGER DEFAULT 0,
             ativo INTEGER DEFAULT 1,
             token_recuperacao TEXT,
             token_expiracao TIMESTAMP,
             forcar_troca_senha INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            criado_por_profissional_id INTEGER,
+            atualizado_por_profissional_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (criado_por_profissional_id) REFERENCES profissionais(id),
+            FOREIGN KEY (atualizado_por_profissional_id) REFERENCES profissionais(id)
         );
     """)
 
-    # 5. Vínculos de Múltiplas Unidades e CBOs por Profissional
+    # 5. Vínculos de Unidades por Profissional (Múltiplas Unidades - N:N puro sem amarra com CBO)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS profissional_unidades (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             profissional_id INTEGER NOT NULL,
             estabelecimento_id INTEGER NOT NULL,
-            cbo_id INTEGER NOT NULL,
             ativo INTEGER DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (profissional_id) REFERENCES profissionais(id) ON DELETE CASCADE,
             FOREIGN KEY (estabelecimento_id) REFERENCES estabelecimentos(id),
-            FOREIGN KEY (cbo_id) REFERENCES cbos(id),
-            UNIQUE(profissional_id, estabelecimento_id, cbo_id)
+            UNIQUE(profissional_id, estabelecimento_id)
         );
     """)
 
-    # 5.1 NOVA TABELA: Restrição de Profissionais Autorizados por CBO / Especialidade (Ex: Equoterapia)
+    # 5.1 Restrição de Profissionais Autorizados por CBO (Caso queira restringir quem insere na fila de certa especialidade)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS cbo_profissionais_autorizados (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -106,22 +111,21 @@ def inicializar_banco():
         );
     """)
 
-    # 6. Tabela de Histórico de Acessos
+    # 6. Histórico de Acessos
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS historico_acessos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             profissional_id INTEGER NOT NULL,
             estabelecimento_id INTEGER NOT NULL,
-            cbo_id INTEGER NOT NULL,
             ip_address TEXT,
+            acao TEXT DEFAULT 'LOGIN',
             data_acesso TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (profissional_id) REFERENCES profissionais(id) ON DELETE CASCADE,
-            FOREIGN KEY (estabelecimento_id) REFERENCES estabelecimentos(id),
-            FOREIGN KEY (cbo_id) REFERENCES cbos(id)
+            FOREIGN KEY (estabelecimento_id) REFERENCES estabelecimentos(id)
         );
     """)
 
-    # 7. Tabela de Usuários / Pacientes
+    # 7. Usuários / Pacientes
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -145,7 +149,7 @@ def inicializar_banco():
         );
     """)
 
-    # 8. Tabela de Lista de Espera / Encaminhamentos
+    # 8. Lista de Espera
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS lista_espera (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -169,7 +173,7 @@ def inicializar_banco():
         );
     """)
 
-    # 9. Tabela de Guias e Fluxos de Encaminhamento
+    # 9. Guias e Fluxos
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS guias_fluxos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -184,7 +188,7 @@ def inicializar_banco():
         );
     """)
 
-    # 10. Tabela de Anexos em PDF das Guias
+    # 10. Anexos das Guias
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS guias_anexos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -196,7 +200,7 @@ def inicializar_banco():
         );
     """)
 
-    # 11. Tabela de Campanhas e Avisos de Login
+    # 11. Campanhas e Avisos
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS campanhas_avisos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -210,9 +214,7 @@ def inicializar_banco():
         );
     """)
 
-    # --- POPULANDO DADOS INICIAIS ---
-
-    # 1. As 21 Unidades de Saúde
+    # Carga Inicial de Estabelecimentos
     estabelecimentos_iniciais = [
         ('4967070', '192 - RESGATE', 'OUTROS'),
         ('7161190', 'CENTRAL DE REGULACAO', 'OUTROS'),
@@ -241,106 +243,31 @@ def inicializar_banco():
         estabelecimentos_iniciais,
     )
 
-    # 2. Especialidades detalhadas (Adicionado exemplo de CBO administrativo com gera_lista_espera = 0)
+    # CBOs / Especialidades (Sem conselho obrigatório, focadas nas faixas etárias e regras de fila)
     cbos_iniciais = [
-        ('225133', 'PSICOLOGIA INFANTIL', 'Psicólogo Infantil', 'CRP', 0, 9, 6, 1, 1),
-        ('225134', 'PSICOLOGIA ADOLESCENTE', 'Psicólogo Adolescente', 'CRP', 10, 17, 6, 1, 1),
-        ('225135', 'PSICOLOGIA ADULTO', 'Psicólogo Adulto', 'CRP', 18, 120, 6, 1, 1),
-        ('225136', 'PSIQUIATRIA INFANTIL', 'Médico Psiquiatra Infantil', 'CRM', 0, 17, 6, 1, 1),
-        ('225137', 'PSIQUIATRIA ADULTO', 'Médico Psiquiatra Adulto', 'CRM', 18, 120, 6, 1, 1),
-        ('223810', 'FONOAUDIOLOGIA INFANTIL', 'Fonoaudiólogo Infantil', 'CRF', 0, 17, 6, 1, 1),
-        ('223811', 'FONOAUDIOLOGIA ADULTO', 'Fonoaudiólogo Adulto', 'CRF', 18, 120, 6, 1, 1),
-        ('223905', 'TERAPIA OCUPACIONAL ADULTO', 'Terapeuta Ocupacional Adulto', 'CREFITO', 18, 120, 6, 1, 1),
-        ('223906', 'TERAPIA OCUPACIONAL INFANTIL', 'Terapeuta Ocupacional Infantil', 'CREFITO', 0, 17, 6, 1, 1),
-        ('411010', 'ASSISTENTE ADMINISTRATIVO', 'Assistente Administrativo', 'MTE', 18, 120, 6, 1, 0), # Exemplo que não gera fila
+        ('225133', 'Psicologia Infantil', 0, 9, 6, 1, 1),
+        ('225134', 'Psicologia Adolescente', 10, 17, 6, 1, 1),
+        ('225135', 'Psicologia Adulto', 18, 120, 6, 1, 1),
+        ('225136', 'Psiquiatria Infantil', 0, 17, 6, 1, 1),
+        ('225137', 'Psiquiatria Adulto', 18, 120, 6, 1, 1),
+        ('223810', 'Fonoaudiologia Infantil', 0, 17, 6, 1, 1),
+        ('223811', 'Fonoaudiologia Adulto', 18, 120, 6, 1, 1),
+        ('223905', 'Terapia Ocupacional', 0, 120, 6, 1, 1),
     ]
     cursor.executemany(
         """
-        INSERT INTO cbos (codigo, ocupacao, profissao, sigla_conselho, idade_minima, idade_maxima, meses_assiduidade, ativa, gera_lista_espera) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO cbos (codigo, ocupacao, idade_minima, idade_maxima, meses_assiduidade, ativa, gera_lista_espera) 
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     """,
         cbos_iniciais,
     )
 
-    # 3. CIDs Iniciais
-    cids_iniciais = [
-        ('F32.2', 'Episódio depressivo grave sem sintomas psicóticos', 'CID-10'),
-        ('F41.1', 'Transtorno de ansiedade generalizada', 'CID-10'),
-        ('F10.2', 'Transtornos mentais e comportamentais devidos ao uso de álcool', 'CID-10'),
-        ('F20.0', 'Esquizofrenia paranoide', 'CID-10'),
-        ('F84.0', 'Autismo infantil', 'CID-10'),
-        ('6A70', 'Transtorno depressivo maior, episódio único, moderado', 'CID-11'),
-        ('6B00', 'Transtorno de ansiedade generalizada', 'CID-11'),
-        ('6C40', 'Transtornos devidos ao uso de álcool', 'CID-11'),
-        ('6A20', 'Esquizofrenia', 'CID-11'),
-        ('6A02', 'Transtorno do espectro autista', 'CID-11'),
-        ('6B20', 'Transtorno de estresse pós-traumático', 'CID-11'),
-        ('6A80', 'Transtorno bipolar', 'CID-11'),
-    ]
-    cursor.executemany(
-        'INSERT INTO cids (codigo, descricao, versao) VALUES (?, ?, ?)',
-        cids_iniciais,
-    )
-
-    # 4. Guias e Fluxos
-    guias_iniciais = [
-        (
-            'APACE',
-            'APACE',
-            'SERVIÇOS CONVENIADOS',
-            'Diretrizes e critérios de regulação para o acesso às instituições parceiras e serviços conveniados de reabilitação e apoio especializado na rede.',
-            '<p><strong>Critérios de Encaminhamento - APACE:</strong></p><ul><li>Apresentar relatório médico detalhado.</li><li>Cartão SUS atualizado e comprovante de residência em São Roque.</li></ul>',
-        ),
-        (
-            'APAE-SR',
-            'APAE-SR',
-            'SERVIÇOS CONVENIADOS',
-            'Diretrizes e critérios de regulação para o acesso às instituições parceiras e serviços conveniados de reabilitação e apoio especializado na rede.',
-            '<p><strong>Critérios de Encaminhamento - APAE:</strong></p><ul><li>Avaliação multiprofissional prévia.</li><li>Atendimento voltado a deficiências intelectuais e múltiplas.</li></ul>',
-        ),
-        (
-            'Equoterapia',
-            'Equoterapia',
-            'SERVIÇOS CONVENIADOS',
-            'Diretrizes e critérios de regulação para o acesso às instituições parceiras e serviços conveniados de reabilitação e apoio especializado na rede.',
-            '<p><strong>Critérios para Equoterapia:</strong></p><ul><li>Indicação médica ou terapêutica obrigatória.</li><li>Termo de responsabilidade e avaliação de contraindicações físicas.</li></ul>',
-        ),
-        (
-            'Instituto Plenus',
-            'Instituto Plenus',
-            'SERVIÇOS CONVENIADOS',
-            'Diretrizes e critérios de regulação para o acesso às instituições parceiras e serviços conveniados de reabilitação e apoio especializado na rede.',
-            '<p><strong>Critérios - Instituto Plenus:</strong></p><ul><li>Encaminhamento via rede pública municipal.</li><li>Atendimento especializado conforme diretrizes do convênio.</li></ul>',
-        ),
-        (
-            'Rede Lucy Montoro',
-            'Rede Lucy Montoro',
-            'SERVIÇO ESPECIALIZADO',
-            'Diretrizes e critérios de regulação para reabilitação de alta complexidade.',
-            '<p><strong>Critérios de Acesso - Rede Lucy Montoro:</strong></p><ul><li>Pacientes com deficiências físicas e motoras incapacitantes.</li><li>Laudo CACON/APAC e exames complementares obrigatórios.</li></ul>',
-        ),
-        (
-            'SPA - VIDA NATURAL',
-            'SPA - VIDA NATURAL',
-            'SERVIÇOS CONVENIADOS',
-            'Diretrizes e critérios de regulação para o acesso às instituições parceiras e serviços conveniados de reabilitação e apoio especializado na rede.',
-            '<p><strong>Diretrizes - SPA Vida Natural:</strong></p><ul><li>Programas de promoção à saúde e bem-estar integrados à rede de atenção.</li></ul>',
-        ),
-    ]
-    cursor.executemany(
-        """
-        INSERT INTO guias_fluxos (titulo_interno, titulo, categoria, descricao_resumida, conteudo_orientacao, ativo)
-        VALUES (?, ?, ?, ?, ?, 1)
-    """,
-        guias_iniciais,
-    )
-
-    # 5. Profissional Administrador Padrão (Nível I)
+    # Administrador Padrão
     senha_padrao = generate_password_hash('admin123')
     cursor.execute(
         """
-        INSERT INTO profissionais (nome, cpf, email, senha_hash, perfil, registro_profissional, ativo)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO profissionais (nome, cpf, email, senha_hash, perfil, profissao, sigla_conselho, registro_profissional, ativo)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """,
         (
             'Administrador Geral',
@@ -348,24 +275,26 @@ def inicializar_banco():
             'admin@saoroque.sp.gov.br',
             senha_padrao,
             'NIVEL_I',
+            'Administrador',
+            'MTE',
             'ADMIN-01',
             1,
         ),
     )
     profissional_id = cursor.lastrowid
 
-    # Vincula o admin padrão ao CAPS II-AD (id 3) com a Psicologia Adulto (id 3)
+    # Vincula o Admin ao CAPS II-AD (id 3) livremente
     cursor.execute(
         """
-        INSERT INTO profissional_unidades (profissional_id, estabelecimento_id, cbo_id)
-        VALUES (?, ?, ?)
+        INSERT INTO profissional_unidades (profissional_id, estabelecimento_id, ativo)
+        VALUES (?, ?, 1)
     """,
-        (profissional_id, 3, 3),
+        (profissional_id, 3),
     )
 
     conn.commit()
     conn.close()
-    print('Banco de dados atualizado com sucesso com suporte a status, lista de espera e restrições de CBO!')
+    print('Banco de dados inicializado com sucesso (versão desacoplada e multissetorial)!')
 
 
 if __name__ == '__main__':

@@ -25,7 +25,6 @@
         .vinculo-option-card input[type="radio"] { accent-color: #692A85; transform: scale(1.2); margin-right: 14px; }
         
         .vinculo-info .unidade-nome { font-size: 15px; font-weight: 700; color: #111827; display: flex; align-items: center; gap: 6px; }
-        .vinculo-info .cbo-detalhe { font-size: 13px; color: #4b5563; margin-top: 2px; }
 
         .btn-continuar { background-color: #692A85; color: white; border: none; width: 100%; padding: 12px; border-radius: 6px; font-size: 15px; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: 10px; }
         .btn-continuar:hover { background-color: #521d6b; }
@@ -42,7 +41,7 @@
     <div class="topbar">
         <div class="title">CAPS II — São Roque</div>
         <div class="center-title">Seleção de Unidade e Lotação</div>
-        <div></div> <!-- Espaçamento lateral simétrico -->
+        <div></div>
     </div>
 
     <div class="container-auth">
@@ -57,7 +56,7 @@
             {% endwith %}
 
             <div class="welcome-title">Olá, {{ nome_profissional }}</div>
-            <div class="welcome-subtitle">Você possui múltiplos vínculos ativos. Selecione a unidade e a especialidade de lotação para iniciar sua sessão:</div>
+            <div class="welcome-subtitle">Você possui múltiplos vínculos ativos. Selecione a unidade de lotação para iniciar sua sessão:</div>
 
             <form action="{{ url_for('selecionar_unidade') }}" method="POST">
                 <div class="mb-3">
@@ -67,9 +66,6 @@
                         <div class="vinculo-info">
                             <div class="unidade-nome">
                                 <span style="color: #692A85;">📍</span> {{ v.estabelecimento_nome }}
-                            </div>
-                            <div class="cbo-detalhe">
-                                <strong>CBO:</strong> {{ v.cbo_ocupacao }} <span class="text-muted">({{ v.cbo_codigo }})</span>
                             </div>
                         </div>
                     </label>
