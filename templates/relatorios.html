@@ -211,11 +211,11 @@
             <p style="font-size: 9pt; font-weight: 700; margin-top: 4px;">RELATÓRIO EXECUTIVO GERENCIAL DE INDICADORES DE SAÚDE</p>
             <p style="font-size: 8pt; margin-top: 3px;">
                 Período de Análise: <strong>{{ data_inicio.split('-')|reverse|join('/') if data_inicio else 'Início' }}</strong> até <strong>{{ data_fim.split('-')|reverse|join('/') if data_fim else 'Fim' }}</strong> | 
-                Unidade Filtrada: <strong>{% if unidade_filtro %}{% for est in estabelecimentos %}{% if est.id|string == unidade_filtro %}{{ est.nome }}{% endif %}{% endfor %}{% else %}Todas as Unidades da Rede{% endif %}</strong> | 
+                Unidade Filtrada: <strong>{% if unidade_filtro %}{% for est in estabelecimentos %}{% if est.id|string == unidade_filtro|string %}{{ est.nome }}{% endif %}{% endfor %}{% else %}Todas as Unidades da Rede{% endif %}</strong> | 
                 Especialidade: <strong>{{ modalidade_filtro or 'Todas as Modalidades' }}</strong>
             </p>
             <p style="font-size: 7.5pt; color: #4b5563; margin-top: 3px;">
-                Emitido por: <strong>{{ session.nome }}</strong> em <span id="dataEmissaoPrint"></span>
+                Emitido por: <strong>{{ session.get('nome') }}</strong> em <span id="dataEmissaoPrint"></span>
             </p>
         </div>
 
@@ -377,11 +377,11 @@
                                 <strong>{{ row.unidade }}</strong>
                             {% endif %}
                         </td>
-                        <td style="text-align: center; color: #92400e; font-weight: 600;">{{ row.aguardando }}</td>
-                        <td style="text-align: center; color: #3730a3; font-weight: 600;">{{ row.em_atendimento }}</td>
-                        <td style="text-align: center; color: #065f46; font-weight: 600;">{{ row.atendido }}</td>
-                        <td style="text-align: center; color: #991b1b; font-weight: 600;">{{ row.cancelado }}</td>
-                        <td style="text-align: right; font-weight: 700; color: #692A85;">{{ row.total }}</td>
+                        <td style="text-align: center; color: #92400e; font-weight: 600;">{{ row.aguardando or 0 }}</td>
+                        <td style="text-align: center; color: #3730a3; font-weight: 600;">{{ row.em_atendimento or 0 }}</td>
+                        <td style="text-align: center; color: #065f46; font-weight: 600;">{{ row.atendido or 0 }}</td>
+                        <td style="text-align: center; color: #991b1b; font-weight: 600;">{{ row.cancelado or 0 }}</td>
+                        <td style="text-align: right; font-weight: 700; color: #692A85;">{{ row.total or 0 }}</td>
                     </tr>
                     {% endif %}
                     {% else %}
@@ -405,7 +405,48 @@
             </div>
         </div>
 
-        <!-- Seção de Geoprocessamento -->
+        <!-- BLOCO: Detalhamento da Fila de Espera por CID e Faixa Etária (Somente Aguardando) -->
+        <div class="report-box" style="margin-bottom: 28px;">
+            <h4>Detalhamento da Fila de Espera por CID e Faixa Etária (Pacientes Aguardando)</h4>
+            <div class="table-responsive">
+                <table class="table-data">
+                    <thead>
+                        <tr>
+                            <th>Código CID</th>
+                            <th>Descrição do CID</th>
+                            <th>Especialidade / Modalidade</th>
+                            <th>Distribuição por Faixa Etária (Aguardando)</th>
+                            <th style="text-align: right;">Total na Fila</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in fila_espera_cid_agrupada %}
+                        <tr>
+                            <td style="font-weight: 700; color: #692A85;">{{ row.cid_codigo }}</td>
+                            <td>{{ row.cid_descricao }}</td>
+                            <td>{{ row.modalidade }}</td>
+                            <td>
+                                <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                    {% for faixa, qtd in row.faixas.items() %}
+                                    <span style="background-color: #f3f4f6; border: 1px solid #d1d5db; padding: 2px 8px; border-radius: 4px; font-size: 11.5px;">
+                                        <strong>{{ faixa }}:</strong> <span style="color: #92400e; font-weight: 600;">{{ qtd }}</span>
+                                    </span>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td style="text-align: right; font-weight: 700; color: #111827;">{{ row.total }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" style="color: #9ca3af; text-align: center; padding: 20px;">Nenhum paciente aguardando com os filtros selecionados.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Seção de Geoprocessamento (Estritamente a Última Seção) -->
         <div class="map-section">
             <h4>Geoprocessamento de Demanda por Região (São Roque - SP)</h4>
             
@@ -414,8 +455,8 @@
                     <label>Filtrar por Modalidade</label>
                     <select id="mapModalidade">
                         <option value="todos">Todas as Modalidades</option>
-                        {% for row in modalidade_counts %}
-                        <option value="{{ row.modalidade_atendimento }}">{{ row.modalidade_atendimento }}</option>
+                        {% for mod in modalidades %}
+                        <option value="{{ mod }}">{{ mod }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -488,7 +529,7 @@
                     <select id="adv_unidade" name="unidade_filtro">
                         <option value="">Todas as Unidades</option>
                         {% for est in estabelecimentos %}
-                        <option value="{{ est.id }}" {% if unidade_filtro == est.id|string %}selected{% endif %}>{{ est.nome }}</option>
+                        <option value="{{ est.id }}" {% if unidade_filtro|string == est.id|string %}selected{% endif %}>{{ est.nome }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -654,7 +695,7 @@
                 {% else %}
                     unidadesLabels.push("{{ row.unidade }}");
                 {% endif %}
-                unidadesTotais.push({{ row.total }});
+                unidadesTotais.push({{ row.total or 0 }});
             {% endif %}
         {% endfor %}
 
