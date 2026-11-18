@@ -55,16 +55,29 @@
         .metric-card label { font-size: 11.5px; color: #6b7280; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
         .metric-card h3 { font-size: 28px; color: #111827; font-weight: 700; margin-top: 8px; }
 
-        /* Grades de Relatórios em Blocos */
+        /* Grades de Relatórios em Blocos / Acordeão Nativo */
         .grid-reports { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 28px; }
         @media(max-width: 900px) { .grid-reports { grid-template-columns: 1fr; } }
 
-        .report-box { background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-top: 4px solid #692A85; }
-        .report-box h4 { font-size: 15px; color: #111827; font-weight: 700; margin-bottom: 16px; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .report-accordion { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-top: 4px solid #692A85; margin-bottom: 24px; overflow: hidden; }
+        .report-accordion summary { padding: 20px 24px; font-size: 15px; color: #111827; font-weight: 700; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; background: white; user-select: none; }
+        .report-accordion summary::-webkit-details-marker { display: none; }
+        .report-accordion summary::after { content: "Mostrar Detalhes ▾"; font-size: 12px; font-weight: 600; color: #692A85; background: #f3e8ff; padding: 6px 12px; border-radius: 6px; transition: all 0.2s; }
+        .report-accordion[open] summary::after { content: "Ocultar ▴"; background: #692A85; color: white; }
+        .report-accordion[open] summary { border-bottom: 1px solid #e5e7eb; }
+        .report-body-content { padding: 20px 24px; background: #faf5ff; }
+
+        /* Estilização para o bloco individual que ocupa a largura toda (como o Desdobramento Analítico) */
+        .report-box-full { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border-top: 4px solid #692A85; margin-bottom: 28px; overflow: hidden; }
+        .report-box-full summary { padding: 20px 24px; font-size: 15px; color: #111827; font-weight: 700; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; background: white; user-select: none; }
+        .report-box-full summary::-webkit-details-marker { display: none; }
+        .report-box-full summary::after { content: "Mostrar Detalhes ▾"; font-size: 12px; font-weight: 600; color: #692A85; background: #f3e8ff; padding: 6px 12px; border-radius: 6px; transition: all 0.2s; }
+        .report-box-full[open] summary::after { content: "Ocultar ▴"; background: #692A85; color: white; }
+        .report-box-full[open] summary { border-bottom: 1px solid #e5e7eb; }
 
         .table-data { width: 100%; border-collapse: collapse; text-align: left; font-size: 13.5px; }
         .table-data th { padding: 12px 14px; border-bottom: 2px solid #e5e7eb; color: #374151; background-color: #f9fafb; font-weight: 600; }
-        .table-data td { padding: 12px 14px; border-bottom: 1px solid #f3f4f6; color: #1f2937; }
+        .table-data td { padding: 12px 14px; border-bottom: 1px solid #f3f4f6; color: #1f2937; background-color: white; }
         .table-data tr:hover td { background-color: #fcf8ff; }
 
         .badge-status { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block; }
@@ -104,7 +117,7 @@
             margin: 10mm;
         }
 
-        /* Estilização Profissional para Impressão e PDF Oficial */
+        /* Estilização Profissional para Impressão e PDF Oficial (Força abertura automática de blocos na impressão) */
         @media print {
             .topbar, .navbar-custom, .filter-panel, .map-section, .footer, .modal-overlay, .alert-overlay, .btn-print-action { display: none !important; }
             body { background: white; color: black; font-size: 9pt; }
@@ -121,10 +134,17 @@
             .metric-card { padding: 12px 16px; border: 1px solid #d1d5db; box-shadow: none; border-left: 4px solid #692A85 !important; }
             .metric-card h3 { font-size: 18pt; color: #111827; }
             
-            .grid-reports { margin-bottom: 14px; gap: 12px; }
-            .report-box { box-shadow: none; border: 1px solid #d1d5db; border-top: 3px solid #692A85 !important; padding: 14px; break-inside: avoid; page-break-inside: avoid; margin-bottom: 10px; }
-            .report-box h4 { margin-bottom: 8px; padding-bottom: 4px; font-size: 11pt; }
+            .grid-reports { margin-bottom: 14px; gap: 12px; display: block !important; }
+            .report-accordion, .report-box-full { box-shadow: none; border: 1px solid #d1d5db; border-top: 3px solid #692A85 !important; padding: 0; break-inside: avoid; page-break-inside: avoid; margin-bottom: 10px; }
             
+            /* Garante que na impressão os detalhes abram automaticamente mesmo se estiverem fechados */
+            details.report-accordion > .report-body-content,
+            details.report-box-full > div { display: block !important; }
+            .report-accordion summary::after, .report-box-full summary::after { display: none !important; }
+            
+            .report-accordion summary, .report-box-full summary { padding: 10px 14px; font-size: 11pt; border-bottom: 1px solid #ccc; }
+            .report-body-content { padding: 10px 14px !important; background: white !important; }
+
             .table-data th, .table-data td { padding: 5px 8px; font-size: 8.5pt; border-bottom: 1px solid #e5e7eb; }
             .table-data th { background-color: #f3f4f6 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
@@ -270,145 +290,154 @@
             </div>
         </div>
 
-        <!-- Blocos Analíticos Lado a Lado -->
+        <!-- Blocos Analíticos Lado a Lado (Em formato Acordeão recolhido por padrão) -->
         <div class="grid-reports">
-            <div class="report-box">
-                <h4>Demanda na Lista por Status Operacional</h4>
-                <table class="table-data">
-                    <thead>
-                        <tr>
-                            <th>Status da Solicitação</th>
-                            <th style="text-align: right;">Quantidade</th>
-                            <th style="text-align: right;">Percentual (%)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in status_counts %}
-                        <tr>
-                            <td><strong>{{ row.status }}</strong></td>
-                            <td style="text-align: right;">{{ row.quantidade }}</td>
-                            <td style="text-align: right; color: #6b7280; font-weight: 500;">
-                                {% if total_geral_filtrado > 0 %}
-                                    {{ "%.1f" | format((row.quantidade / total_geral_filtrado) * 100) }}%
-                                {% else %}
-                                    0%
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="3" style="color: #9ca3af; text-align: center; padding: 20px;">Nenhum registro encontrado para este critério.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+            <!-- 1. Demanda na Lista por Status Operacional -->
+            <details class="report-accordion">
+                <summary>Demanda na Lista por Status Operacional</summary>
+                <div class="report-body-content">
+                    <table class="table-data">
+                        <thead>
+                            <tr>
+                                <th>Status da Solicitação</th>
+                                <th style="text-align: right;">Quantidade</th>
+                                <th style="text-align: right;">Percentual (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in status_counts %}
+                            <tr>
+                                <td><strong>{{ row.status }}</strong></td>
+                                <td style="text-align: right;">{{ row.quantidade }}</td>
+                                <td style="text-align: right; color: #6b7280; font-weight: 500;">
+                                    {% if total_geral_filtrado > 0 %}
+                                        {{ "%.1f" | format((row.quantidade / total_geral_filtrado) * 100) }}%
+                                    {% else %}
+                                        0%
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="3" style="color: #9ca3af; text-align: center; padding: 20px;">Nenhum registro encontrado para este critério.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </details>
 
-            <!-- Tabela de Distribuição por Especialidade / Modalidade -->
-            <div class="report-box">
-                <h4>Distribuição por Especialidade / Modalidade</h4>
-                <table class="table-data" style="font-size: 8.5pt;">
-                    <thead>
-                        <tr>
-                            <th rowspan="2" style="vertical-align: middle;">Modalidade</th>
-                            <th colspan="4" style="text-align: center; background-color: #f1f5f9; border-bottom: 1px solid #e5e7eb;">Ano</th>
-                            <th rowspan="2" style="text-align: right; vertical-align: middle;">Qtd</th>
-                            <th rowspan="2" style="text-align: right; vertical-align: middle;">%</th>
-                        </tr>
-                        <tr>
-                            <th style="text-align: center;">2023</th>
-                            <th style="text-align: center;">2024</th>
-                            <th style="text-align: center;">2025</th>
-                            <th style="text-align: center;">2026</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for row in modalidade_counts %}
-                        <tr>
-                            <td><strong>{{ row.modalidade_atendimento }}</strong></td>
-                            <td style="text-align: center;">{{ row.ano_2023 or 0 }}</td>
-                            <td style="text-align: center;">{{ row.ano_2024 or 0 }}</td>
-                            <td style="text-align: center;">{{ row.ano_2025 or 0 }}</td>
-                            <td style="text-align: center;">{{ row.ano_2026 or 0 }}</td>
-                            <td style="text-align: right; font-weight: bold;">{{ row.quantidade }}</td>
-                            <td style="text-align: right; color: #6b7280; font-weight: 500;">
-                                {% if total_geral_filtrado > 0 %}
-                                    {{ "%.1f" | format((row.quantidade / total_geral_filtrado) * 100) }}%
-                                {% else %}
-                                    0%
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="7" style="color: #9ca3af; text-align: center; padding: 20px;">Nenhum registro encontrado.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+            <!-- 2. Distribuição por Especialidade / Modalidade -->
+            <details class="report-accordion">
+                <summary>Distribuição por Especialidade / Modalidade</summary>
+                <div class="report-body-content">
+                    <table class="table-data" style="font-size: 8.5pt;">
+                        <thead>
+                            <tr>
+                                <th rowspan="2" style="vertical-align: middle;">Modalidade</th>
+                                <th colspan="4" style="text-align: center; background-color: #f1f5f9; border-bottom: 1px solid #e5e7eb;">Ano</th>
+                                <th rowspan="2" style="text-align: right; vertical-align: middle;">Qtd</th>
+                                <th rowspan="2" style="text-align: right; vertical-align: middle;">%</th>
+                            </tr>
+                            <tr>
+                                <th style="text-align: center;">2023</th>
+                                <th style="text-align: center;">2024</th>
+                                <th style="text-align: center;">2025</th>
+                                <th style="text-align: center;">2026</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in modalidade_counts %}
+                            <tr>
+                                <td><strong>{{ row.modalidade_atendimento }}</strong></td>
+                                <td style="text-align: center;">{{ row.ano_2023 or 0 }}</td>
+                                <td style="text-align: center;">{{ row.ano_2024 or 0 }}</td>
+                                <td style="text-align: center;">{{ row.ano_2025 or 0 }}</td>
+                                <td style="text-align: center;">{{ row.ano_2026 or 0 }}</td>
+                                <td style="text-align: right; font-weight: bold;">{{ row.quantidade }}</td>
+                                <td style="text-align: right; color: #6b7280; font-weight: 500;">
+                                    {% if total_geral_filtrado > 0 %}
+                                        {{ "%.1f" | format((row.quantidade / total_geral_filtrado) * 100) }}%
+                                    {% else %}
+                                        0%
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="7" style="color: #9ca3af; text-align: center; padding: 20px;">Nenhum registro encontrado.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </details>
         </div>
 
-        <!-- Tabela Consolidada por Unidade ou Profissional da Unidade Filtrada -->
-        <div class="report-box" style="margin-bottom: 28px;">
-            <h4>
+        <!-- 3. Tabela Consolidada por Unidade ou Profissional (Acordeão Largo) -->
+        <details class="report-box-full">
+            <summary>
                 {% if unidade_filtro %}
                     Desdobramento Analítico por Profissional Solicitante (Produtividade e Status na Unidade)
                 {% else %}
                     Desdobramento Analítico por Unidade Solicitante e Status Operacional
                 {% endif %}
-            </h4>
-            <table class="table-data">
-                <thead>
-                    <tr>
-                        <th>{% if unidade_filtro %}Profissional Responsável / CBO{% else %}Unidade de Saúde Solicitante{% endif %}</th>
-                        <th style="text-align: center;"><span class="badge-status badge-aguardando">Aguardando</span></th>
-                        <th style="text-align: center;"><span class="badge-status badge-atendimento">Em Atendimento</span></th>
-                        <th style="text-align: center;"><span class="badge-status badge-finalizado">Finalizado</span></th>
-                        <th style="text-align: center;"><span class="badge-status badge-cancelado">Cancelado</span></th>
-                        <th style="text-align: right;">Total Geral</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in unidade_counts %}
-                    {% if not unidade_filtro or row.total > 0 %}
-                    <tr>
-                        <td>
-                            {% if unidade_filtro %}
-                                <strong>{{ row.profissional_nome or 'Profissional não identificado' }}</strong>
-                                <br><small style="color: #6b7280;">{{ row.profissional_cbo or 'Atendimento Geral' }}</small>
-                            {% else %}
-                                <strong>{{ row.unidade }}</strong>
-                            {% endif %}
-                        </td>
-                        <td style="text-align: center; color: #92400e; font-weight: 600;">{{ row.aguardando or 0 }}</td>
-                        <td style="text-align: center; color: #3730a3; font-weight: 600;">{{ row.em_atendimento or 0 }}</td>
-                        <td style="text-align: center; color: #065f46; font-weight: 600;">{{ row.atendido or 0 }}</td>
-                        <td style="text-align: center; color: #991b1b; font-weight: 600;">{{ row.cancelado or 0 }}</td>
-                        <td style="text-align: right; font-weight: 700; color: #692A85;">{{ row.total or 0 }}</td>
-                    </tr>
-                    {% endif %}
-                    {% else %}
-                    <tr><td colspan="6" style="color: #9ca3af; text-align: center; padding: 20px;">Nenhum encaminhamento registrado para este critério.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+            </summary>
+            <div style="padding: 20px 24px; background: #faf5ff;">
+                <table class="table-data">
+                    <thead>
+                        <tr>
+                            <th>{% if unidade_filtro %}Profissional Responsável / CBO{% else %}Unidade de Saúde Solicitante{% endif %}</th>
+                            <th style="text-align: center;"><span class="badge-status badge-aguardando">Aguardando</span></th>
+                            <th style="text-align: center;"><span class="badge-status badge-atendimento">Em Atendimento</span></th>
+                            <th style="text-align: center;"><span class="badge-status badge-finalizado">Finalizado</span></th>
+                            <th style="text-align: center;"><span class="badge-status badge-cancelado">Cancelado</span></th>
+                            <th style="text-align: right;">Total Geral</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in unidade_counts %}
+                        {% if not unidade_filtro or row.total > 0 %}
+                        <tr>
+                            <td>
+                                {% if unidade_filtro %}
+                                    <strong>{{ row.profissional_nome or 'Profissional não identificado' }}</strong>
+                                    <br><small style="color: #6b7280;">{{ row.profissional_cbo or 'Atendimento Geral' }}</small>
+                                {% else %}
+                                    <strong>{{ row.unidade }}</strong>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: center; color: #92400e; font-weight: 600;">{{ row.aguardando or 0 }}</td>
+                            <td style="text-align: center; color: #3730a3; font-weight: 600;">{{ row.em_atendimento or 0 }}</td>
+                            <td style="text-align: center; color: #065f46; font-weight: 600;">{{ row.atendido or 0 }}</td>
+                            <td style="text-align: center; color: #991b1b; font-weight: 600;">{{ row.cancelado or 0 }}</td>
+                            <td style="text-align: right; font-weight: 700; color: #692A85;">{{ row.total or 0 }}</td>
+                        </tr>
+                        {% endif %}
+                        {% else %}
+                        <tr><td colspan="6" style="color: #9ca3af; text-align: center; padding: 20px;">Nenhum encaminhamento registrado para este critério.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </details>
 
-        <!-- Seção de Gráfico Executivo -->
-        <div class="chart-print-section">
-            <h4>
+        <!-- 4. Seção de Gráfico Executivo (Em Acordeão) -->
+        <details class="chart-print-section report-box-full">
+            <summary style="border-top: none;">
                 {% if unidade_filtro %}
                     Consolidado Gráfico de Solicitações por Profissional
                 {% else %}
                     Consolidado Gráfico de Solicitações por Unidade
                 {% endif %}
-            </h4>
-            <div class="chart-print-container">
-                <canvas id="graficoImpressao"></canvas>
+            </summary>
+            <div style="padding: 20px 24px; background: #faf5ff;">
+                <div class="chart-print-container">
+                    <canvas id="graficoImpressao"></canvas>
+                </div>
             </div>
-        </div>
+        </details>
 
-        <!-- BLOCO: Detalhamento da Fila de Espera por CID e Faixa Etária (Somente Aguardando) -->
-        <div class="report-box" style="margin-bottom: 28px;">
-            <h4>Detalhamento da Fila de Espera por CID e Faixa Etária (Pacientes Aguardando)</h4>
-            <div class="table-responsive">
+        <!-- 5. BLOCO: Detalhamento da Fila de Espera por CID e Faixa Etária (Em Acordeão) -->
+        <details class="report-box-full" style="margin-bottom: 28px;">
+            <summary>Detalhamento da Fila de Espera por CID e Faixa Etária (Pacientes Aguardando)</summary>
+            <div style="padding: 20px 24px; background: #faf5ff;" class="table-responsive">
                 <table class="table-data">
                     <thead>
                         <tr>
@@ -444,9 +473,9 @@
                     </tbody>
                 </table>
             </div>
-        </div>
+        </details>
 
-        <!-- Seção de Geoprocessamento (Estritamente a Última Seção) -->
+        <!-- Seção de Geoprocessamento (Estritamente a Última Seção - Mantida Aberta) -->
         <div class="map-section">
             <h4>Geoprocessamento de Demanda por Região (São Roque - SP)</h4>
             
